@@ -1,9 +1,7 @@
 ﻿using CommandLine;
 
-namespace Mitsuba2SeeSharp
-{
-    public class Options
-    {
+namespace Mitsuba2SeeSharp {
+    public class Options {
         [Value(0, MetaName = "input file",
             HelpText = "Input file to be processed.",
             Required = true)]

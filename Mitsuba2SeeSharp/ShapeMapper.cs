@@ -1,18 +1,13 @@
 ﻿using System.IO;
 using TinyParserMitsuba;
 
-namespace Mitsuba2SeeSharp
-{
-    public static class ShapeMapper
-    {
-        public static SeeMesh Map(SceneObject shape, ref LoadContext ctx)
-        {
+namespace Mitsuba2SeeSharp {
+    public static class ShapeMapper {
+        public static SeeMesh Map(SceneObject shape, ref LoadContext ctx) {
             SeeMesh mesh = new() { type = "ply" };
-            if (shape.PluginType == "rectangle")
-            {
+            if (shape.PluginType == "rectangle") {
                 bool flip_normals = false;
-                if (shape.Properties.ContainsKey("flip_normals"))
-                {
+                if (shape.Properties.ContainsKey("flip_normals")) {
                     flip_normals = shape.Properties["flip_normals"].GetBool();
                 }
 
@@ -28,13 +23,10 @@ namespace Mitsuba2SeeSharp
                 string newpath = MapperUtils.CreatePlyPath($"__rectangle_{ctx.Scene.objects.Count}.ply", ctx.Options);
                 File.WriteAllBytes(newpath, actualMesh.ToPly());
                 mesh.relativePath = MapperUtils.PathToUnix(MapperUtils.MakeItRelative(newpath, ctx.Options));
-            }
-            else if (shape.PluginType == "serialized")
-            {
+            } else if (shape.PluginType == "serialized") {
                 SeeTransform transform = MapperUtils.ExtractTransform(shape, ctx.Options);
                 int shapeIndex = 0;
-                if (shape.Properties.ContainsKey("shape"))
-                {
+                if (shape.Properties.ContainsKey("shape")) {
                     shapeIndex = (int)shape.Properties["shape"].GetInteger();
                 }
 
@@ -48,13 +40,10 @@ namespace Mitsuba2SeeSharp
                 string newpath = MapperUtils.CreatePlyPath(filename, ctx.Options);
                 File.WriteAllBytes(newpath, actualMesh.ToPly());
                 mesh.relativePath = MapperUtils.PathToUnix(MapperUtils.MakeItRelative(newpath, ctx.Options));
-            }
-            else if (shape.PluginType == "obj")
-            {
+            } else if (shape.PluginType == "obj") {
                 SeeTransform transform = MapperUtils.ExtractTransform(shape, ctx.Options);
                 int shapeIndex = 0;
-                if (shape.Properties.ContainsKey("shape"))
-                {
+                if (shape.Properties.ContainsKey("shape")) {
                     shapeIndex = (int)shape.Properties["shape"].GetInteger();
                 }
 
@@ -68,13 +57,10 @@ namespace Mitsuba2SeeSharp
                 string newpath = MapperUtils.CreatePlyPath(filename, ctx.Options);
                 File.WriteAllBytes(newpath, actualMesh.ToPly());
                 mesh.relativePath = MapperUtils.PathToUnix(MapperUtils.MakeItRelative(newpath, ctx.Options));
-            }
-            else if (shape.PluginType == "ply")
-            {
+            } else if (shape.PluginType == "ply") {
                 SeeTransform transform = MapperUtils.ExtractTransform(shape, ctx.Options);
 
-                if (!MapperUtils.IsTransformIdentity(transform))
-                {
+                if (!MapperUtils.IsTransformIdentity(transform)) {
                     string filename = MapperUtils.ExtractFilenameAbsolute(shape, ctx.Options);
                     Mesh actualMesh = PlyLoader.ParseFile(filename);
                     if (actualMesh == null)
@@ -85,15 +71,11 @@ namespace Mitsuba2SeeSharp
                     string newpath = MapperUtils.CreatePlyPath(filename, ctx.Options);
                     File.WriteAllBytes(newpath, actualMesh.ToPly());
                     mesh.relativePath = MapperUtils.PathToUnix(MapperUtils.MakeItRelative(newpath, ctx.Options));
-                }
-                else
-                {
+                } else {
                     // Use file directly
                     mesh.relativePath = MapperUtils.PathToUnix(MapperUtils.ExtractFilename(shape, ctx.Options));
                 }
-            }
-            else
-            {
+            } else {
                 Log.Error("Currently no support for " + shape.PluginType + " type of shapes");
             }
 
@@ -102,23 +84,17 @@ namespace Mitsuba2SeeSharp
                 return null;
 
             // Handle material assosciation
-            foreach (var child in shape.AnonymousChildren)
-            {
-                if (child.Type == ObjectType.Bsdf)
-                {
+            foreach (SceneObject child in shape.AnonymousChildren) {
+                if (child.Type == ObjectType.Bsdf) {
                     string id = child.ID;
-                    if (id == "" || !ctx.MaterialNames.Contains(id))
-                    {
+                    if (id == "" || !ctx.MaterialNames.Contains(id)) {
                         SeeMaterial mat = MaterialMapper.Map(child, ref ctx);
-                        if (mat != null)
-                        {
+                        if (mat != null) {
                             ctx.Scene.materials.Add(mat);
                             ctx.MaterialNames.Add(mat.name);
                             mesh.material = mat.name;
                         }
-                    }
-                    else
-                    {
+                    } else {
                         mesh.material = child.ID;
                     }
                     break;

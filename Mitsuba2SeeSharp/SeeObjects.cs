@@ -1,27 +1,22 @@
 ﻿using System.Collections.Generic;
 
 #pragma warning disable IDE1006 // Disable naming warnings as we try to match the json file
-namespace Mitsuba2SeeSharp
-{
-    public class SeeVector
-    {
+namespace Mitsuba2SeeSharp {
+    public class SeeVector {
         public float x { get; set; }
         public float y { get; set; }
         public float z { get; set; }
     }
 
-    public class SeeMatrix
-    {
+    public class SeeMatrix {
         public float[] elements { get; } = new float[4 * 4];
     }
 
-    public class SeeRGB
-    {
+    public class SeeRGB {
         public SeeVector value { get; set; }
     }
 
-    public class SeeColorOrTexture
-    {
+    public class SeeColorOrTexture {
         public string type { get; set; }
         public SeeVector value { get; set; }
         public string filename { get; set; }
@@ -30,8 +25,7 @@ namespace Mitsuba2SeeSharp
         public static SeeColorOrTexture Black { get => new() { type = "rgb", value = new() { x = 0, y = 0, z = 0 }, filename = null }; }
     }
 
-    public class SeeTransform
-    {
+    public class SeeTransform {
         public string name { get; set; }
         //public SeeVector scale { get; set; }
         //public SeeVector rotation { get; set; }
@@ -39,22 +33,19 @@ namespace Mitsuba2SeeSharp
         public SeeMatrix matrix { get; set; }
     }
 
-    public class SeeCamera
-    {
+    public class SeeCamera {
         public string name { get; set; }
         public string type { get; set; }
         public float fov { get; set; }
         public string transform { get; set; }
     }
 
-    public class SeeBackground
-    {
+    public class SeeBackground {
         public string type { get; set; }
         public string filename { get; set; }
     }
 
-    public class SeeMesh
-    {
+    public class SeeMesh {
         // We expose all objects as ply for SeeSharp
         public string name { get; set; }
         public string type { get; set; }
@@ -62,8 +53,7 @@ namespace Mitsuba2SeeSharp
         public string material { get; set; }
     }
 
-    public class SeeMaterial
-    {
+    public class SeeMaterial {
         public string name { get; set; }
         public string type { get; set; }
 
@@ -82,8 +72,7 @@ namespace Mitsuba2SeeSharp
         public float specularTransmittance { get; set; } = 0;
     }
 
-    public class SeeScene
-    {
+    public class SeeScene {
         public string name { get; set; }
         public List<SeeTransform> transforms { get; } = new();
         public List<SeeCamera> cameras { get; } = new();

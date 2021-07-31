@@ -1,56 +1,47 @@
-﻿using System;
+﻿using ObjLoader.Loader.Data.Elements;
+using ObjLoader.Loader.Loaders;
+using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Numerics;
 using System.Linq;
-using ObjLoader.Loader.Data.Elements;
-using ObjLoader.Loader.Loaders;
+using System.Numerics;
 
-namespace Mitsuba2SeeSharp
-{
+namespace Mitsuba2SeeSharp {
     /// <summary>
     /// Wavefront obj loader mesh
     /// </summary>
-    public static class ObjLoader
-    {
+    public static class ObjLoader {
         /// <summary>
         /// Index used for hashing
         /// </summary>
-        private class Index : IEquatable<Index>
-        {
+        private class Index : IEquatable<Index> {
             public int Vertex { get; }
             public int Normal { get; }
             public int TexCoord { get; }
 
-            public Index(int v, int n, int t)
-            {
+            public Index(int v, int n, int t) {
                 Vertex = v;
                 Normal = n;
                 TexCoord = t;
             }
-            public Index(FaceVertex fv)
-            {
+            public Index(FaceVertex fv) {
                 Vertex = fv.VertexIndex - 1;
                 Normal = fv.NormalIndex - 1;
                 TexCoord = fv.TextureIndex - 1;
             }
 
-            public override int GetHashCode()
-            {
+            public override int GetHashCode() {
                 return Vertex.GetHashCode() ^ Normal.GetHashCode() ^ TexCoord.GetHashCode();
             }
 
-            public override bool Equals(object obj)
-            {
-                if (obj == null || GetType() != obj.GetType())
-                {
+            public override bool Equals(object obj) {
+                if (obj == null || GetType() != obj.GetType()) {
                     return false;
                 }
                 return Equals((Index)obj);
             }
 
-            public bool Equals(Index other)
-            {
+            public bool Equals(Index other) {
                 return other.Vertex.Equals(Vertex) && other.Normal.Equals(Normal) && other.TexCoord.Equals(TexCoord);
             }
         }
@@ -58,20 +49,18 @@ namespace Mitsuba2SeeSharp
         /// <summary>
         /// Loads .obj file
         /// </summary>
-        public static Mesh ParseFile(string filename, int shape = 0)
-        {
-            var objLoaderFactory = new ObjLoaderFactory();
-            var objLoader = objLoaderFactory.Create(new MaterialNullStreamProvider());
-            using var file = File.OpenRead(filename);
-            var result = objLoader.Load(file);
+        public static Mesh ParseFile(string filename, int shape = 0) {
+            ObjLoaderFactory objLoaderFactory = new ObjLoaderFactory();
+            IObjLoader objLoader = objLoaderFactory.Create(new MaterialNullStreamProvider());
+            using FileStream file = File.OpenRead(filename);
+            LoadResult result = objLoader.Load(file);
 
-            if (shape >= result.Groups.Count)
-            {
+            if (shape >= result.Groups.Count) {
                 Log.Error("Given shape index is not available");
                 return null;
             }
 
-            var group = result.Groups[shape];
+            Group group = result.Groups[shape];
 
             bool hasNormals = result.Normals.Count != 0;
             bool hasTexcoords = result.Textures.Count != 0;
@@ -81,33 +70,28 @@ namespace Mitsuba2SeeSharp
             Dictionary<Index, Vector3> vertices = new();
             Dictionary<Index, Vector3> normals = new();
             Dictionary<Index, Vector2> texcoords = new();
-            foreach (var face in group.Faces)
-            {
-                for (int i = 0; i < face.Count; ++i)
-                {
+            foreach (Face face in group.Faces) {
+                for (int i = 0; i < face.Count; ++i) {
                     Index index = new(face[i]);
                     if (!mapper.TryAdd(index, mapper.Count))
                         continue;// Already registered
 
-                    var vert = result.Vertices[index.Vertex];
+                    global::ObjLoader.Loader.Data.VertexData.Vertex vert = result.Vertices[index.Vertex];
                     vertices.Add(index, new(vert.X, vert.Y, vert.Z));
 
-                    if (hasNormals)
-                    {
-                        var norm = result.Normals[index.Normal];
+                    if (hasNormals) {
+                        global::ObjLoader.Loader.Data.VertexData.Normal norm = result.Normals[index.Normal];
                         normals.Add(index, new(norm.X, norm.Y, norm.Z));
                     }
 
-                    if (hasTexcoords)
-                    {
-                        var tex = result.Textures[index.TexCoord];
+                    if (hasTexcoords) {
+                        global::ObjLoader.Loader.Data.VertexData.Texture tex = result.Textures[index.TexCoord];
                         texcoords.Add(index, new(tex.X, tex.Y));
                     }
                 }
             }
 
-            if (vertices.Count == 0)
-            {
+            if (vertices.Count == 0) {
                 Log.Error("Mesh has no vertices");
                 return null;
             }
@@ -121,34 +105,26 @@ namespace Mitsuba2SeeSharp
             bool warned = false;
 
             // Triangulate and reset indices
-            foreach (var face in group.Faces)
-            {
+            foreach (Face face in group.Faces) {
                 // Get actual indices
-                var indices = new int[face.Count];
-                for (int i = 0; i < face.Count; ++i)
-                {
-                    var mindex = new Index(face[i]);
+                int[] indices = new int[face.Count];
+                for (int i = 0; i < face.Count; ++i) {
+                    Index mindex = new Index(face[i]);
                     indices[i] = mapper[mindex];
                 }
 
                 // Triangulate if necessary
-                if (indices.Length == 3)
-                {
+                if (indices.Length == 3) {
                     mesh.Indices.AddRange(indices);
-                }
-                else if (indices.Length < 3)
-                {
-                    if (!warned)
-                    {
+                } else if (indices.Length < 3) {
+                    if (!warned) {
                         Log.Warning("Mesh contains invalid faces");
                         warned = true;
                     }
-                }
-                else // Convex triangulation
-                {
+                } else // Convex triangulation
+                  {
                     int pin = indices[0];
-                    for (int i = 2; i < indices.Length; ++i)
-                    {
+                    for (int i = 2; i < indices.Length; ++i) {
                         mesh.Indices.AddRange(new int[3] { pin, indices[i - 1], indices[i] });
                     }
                 }

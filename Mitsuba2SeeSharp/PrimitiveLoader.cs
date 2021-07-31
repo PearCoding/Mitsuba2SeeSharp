@@ -1,17 +1,14 @@
 ﻿using System.Numerics;
 
-namespace Mitsuba2SeeSharp
-{
+namespace Mitsuba2SeeSharp {
     /// <summary>
     /// Construct mesh from primitives
     /// </summary>
-    public static class PrimitiveLoader
-    {
+    public static class PrimitiveLoader {
         /// <summary>
         /// Construct mesh from rectangle
         /// </summary>
-        public static Mesh CreateRectangle()
-        {
+        public static Mesh CreateRectangle() {
             Mesh mesh = new();
 
             mesh.Vertices.Add(new(-1, -1, 0));

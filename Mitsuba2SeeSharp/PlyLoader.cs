@@ -5,51 +5,35 @@ using System.Linq;
 using System.Numerics;
 using System.Text;
 
-namespace Mitsuba2SeeSharp
-{
+namespace Mitsuba2SeeSharp {
     /// <summary>
     /// Simple class allowing to mix ascii text and binary data reading
     /// </summary>
-    internal class MixReader : BinaryReader
-    {
-        public MixReader(string path, Encoding encoding) : base(new FileStream(path, FileMode.Open, FileAccess.Read), encoding)
-        {
+    internal class MixReader : BinaryReader {
+        public MixReader(string path, Encoding encoding) : base(new FileStream(path, FileMode.Open, FileAccess.Read), encoding) {
         }
 
-        public string ReadLineAsString(ref bool eos)
-        {
+        public string ReadLineAsString(ref bool eos) {
             StringBuilder stringBuffer = new(1024);
 
             eos = false;
-            try
-            {
-                while (true)
-                {
+            try {
+                while (true) {
                     char ch = base.ReadChar();
-                    if (ch == '\r')
-                    { // Windows style
+                    if (ch == '\r') { // Windows style
                         ch = base.ReadChar();
-                        if (ch == '\n')
-                        {
+                        if (ch == '\n') {
                             break;
-                        }
-                        else
-                        {
+                        } else {
                             stringBuffer.Append(ch);
                         }
-                    }
-                    else if (ch == '\n')
-                    { // Unix style
+                    } else if (ch == '\n') { // Unix style
                         break;
-                    }
-                    else
-                    {
+                    } else {
                         stringBuffer.Append(ch);
                     }
                 }
-            }
-            catch (EndOfStreamException)
-            {
+            } catch (EndOfStreamException) {
                 eos = true;
             }
 
@@ -63,13 +47,11 @@ namespace Mitsuba2SeeSharp
     /// <summary>
     /// Ply loader mesh
     /// </summary>
-    public static class PlyLoader
-    {
+    public static class PlyLoader {
         /// <summary>
         /// A face with arbitrarily many vertices, given by a list of indices
         /// </summary>
-        public class Face
-        {
+        public class Face {
             /// <summary> Indices of the face </summary>
             public List<int> Indices = new();
         }
@@ -79,34 +61,25 @@ namespace Mitsuba2SeeSharp
         /// </summary>
         /// <param name="filename"></param>
         /// <returns>List of errors (and warnings)</returns>
-        public static Mesh ParseFile(string filename)
-        {
+        public static Mesh ParseFile(string filename) {
             // Parse the .ply itself
-            using (var file = new MixReader(filename, Encoding.ASCII))
+            using (MixReader file = new MixReader(filename, Encoding.ASCII))
                 return ParsePlyFile(file);
         }
 
         /// <summary>
         /// Construct list of triangle indices from convex polygons
         /// </summary>
-        private static List<int> ToTriangleList(List<Face> faces)
-        {
+        private static List<int> ToTriangleList(List<Face> faces) {
             List<int> list = new();
-            foreach (Face f in faces)
-            {
-                if (f.Indices.Count == 3)
-                {
+            foreach (Face f in faces) {
+                if (f.Indices.Count == 3) {
                     list.AddRange(f.Indices);
-                }
-                else if (f.Indices.Count < 3)
-                {
+                } else if (f.Indices.Count < 3) {
                     // TODO: Print warning?
-                }
-                else
-                { // Fan triangulation, only works for convex polygons
+                } else { // Fan triangulation, only works for convex polygons
                     int pin = f.Indices[0];
-                    for (int i = 2; i < f.Indices.Count; ++i)
-                    {
+                    for (int i = 2; i < f.Indices.Count; ++i) {
                         list.AddRange(new int[3] { pin, f.Indices[i - 1], f.Indices[i] });
                     }
                 }
@@ -118,8 +91,7 @@ namespace Mitsuba2SeeSharp
         /// <summary>
         /// Interface to read binary and ascii based data region
         /// </summary>
-        private interface IDataReader
-        {
+        private interface IDataReader {
             public (Vector3, Vector3, Vector2) ReadPerVertexLine();
             public Face ReadFaceLine();
         }
@@ -127,29 +99,24 @@ namespace Mitsuba2SeeSharp
         /// <summary>
         /// Data reader for ascii based files
         /// </summary>
-        private class AsciiDataReader : IDataReader
-        {
-            public AsciiDataReader(PlyHeader header, MixReader stream)
-            {
+        private class AsciiDataReader : IDataReader {
+            public AsciiDataReader(PlyHeader header, MixReader stream) {
                 Header = header;
                 Stream = stream;
             }
 
-            public Face ReadFaceLine()
-            {
+            public Face ReadFaceLine() {
                 bool eos = false;// Ignore
                 string[] parts = Stream.ReadLineAsString(ref eos).Split();
                 int count = int.Parse(parts[0]);
                 return new() { Indices = parts.Skip(1).Take(count).Select(p => int.Parse(p)).ToList() };
             }
 
-            public (Vector3, Vector3, Vector2) ReadPerVertexLine()
-            {
+            public (Vector3, Vector3, Vector2) ReadPerVertexLine() {
                 bool eos = false;// Ignore
                 string[] parts = Stream.ReadLineAsString(ref eos).Split();
 
-                float GetPart(int elem)
-                {
+                float GetPart(int elem) {
                     if (elem != -1 && elem < parts.Length)
                         return float.Parse(parts[elem]);
                     else
@@ -175,68 +142,54 @@ namespace Mitsuba2SeeSharp
         /// <summary>
         /// Data reader for binary based files
         /// </summary>
-        private class BinaryDataReader : IDataReader
-        {
-            public BinaryDataReader(PlyHeader header, MixReader stream)
-            {
+        private class BinaryDataReader : IDataReader {
+            public BinaryDataReader(PlyHeader header, MixReader stream) {
                 Header = header;
                 Stream = stream;
                 IsBigEndian = header.IsBigEndian;
             }
 
-            private int GetIndex()
-            {
+            private int GetIndex() {
                 bool swap = IsBigEndian == BitConverter.IsLittleEndian;
                 int val = Stream.ReadInt32();
-                if (swap)
-                {
+                if (swap) {
                     byte[] bytes = BitConverter.GetBytes(val);
                     Array.Reverse(bytes);
                     return BitConverter.ToInt32(bytes);
-                }
-                else
-                {
+                } else {
                     return val;
                 }
             }
 
-            private float GetSingle()
-            {
+            private float GetSingle() {
                 bool swap = IsBigEndian == BitConverter.IsLittleEndian;
                 float val = Stream.ReadSingle();
-                if (swap)
-                {
+                if (swap) {
                     byte[] bytes = BitConverter.GetBytes(val);
                     Array.Reverse(bytes);
                     return BitConverter.ToSingle(bytes);
-                }
-                else
-                {
+                } else {
                     return val;
                 }
             }
 
-            public Face ReadFaceLine()
-            {
+            public Face ReadFaceLine() {
                 byte elemcount = Stream.ReadByte();
 
                 Face face = new();
-                for (byte i = 0; i < elemcount; ++i)
-                {
+                for (byte i = 0; i < elemcount; ++i) {
                     face.Indices.Add(GetIndex());
                 }
 
                 return face;
             }
 
-            public (Vector3, Vector3, Vector2) ReadPerVertexLine()
-            {
+            public (Vector3, Vector3, Vector2) ReadPerVertexLine() {
                 float x = 0, y = 0, z = 0;
                 float nx = 0, ny = 0, nz = 0;
                 float u = 0, v = 0;
 
-                for (int i = 0; i < Header.VertexPropCount; ++i)
-                {
+                for (int i = 0; i < Header.VertexPropCount; ++i) {
                     float val = GetSingle();
                     if (i == Header.XElem) x = val;
                     if (i == Header.YElem) y = val;
@@ -259,8 +212,7 @@ namespace Mitsuba2SeeSharp
         /// <summary>
         /// Essential informations from the .ply header which is always given in ascii format
         /// </summary>
-        private class PlyHeader
-        {
+        private class PlyHeader {
             public int VertexCount = 0;
             public int FaceCount = 0;
             public int XElem = -1;
@@ -288,24 +240,21 @@ namespace Mitsuba2SeeSharp
         /// <summary>
         /// Returns true if the method of the data region is feasible
         /// </summary>
-        private static bool IsAllowedMethod(string method)
-        {
+        private static bool IsAllowedMethod(string method) {
             return method == "ascii" || method == "binary_little_endian" || method == "binary_big_endian";
         }
 
         /// <summary>
         /// Returns true if the counter type for lists is supported
         /// </summary>
-        private static bool IsAllowedVertCountType(string type)
-        {
+        private static bool IsAllowedVertCountType(string type) {
             return type == "char" || type == "uchar" || type == "int8" || type == "uint8";
         }
 
         /// <summary>
         /// Returns true if the index type for lists is supported
         /// </summary>
-        private static bool IsAllowedVertIndType(string type)
-        {
+        private static bool IsAllowedVertIndType(string type) {
             return type == "int" || type == "uint";
         }
 
@@ -315,48 +264,38 @@ namespace Mitsuba2SeeSharp
         /// <param name="stream"></param>
         /// <param name="header"></param>
         /// <returns>List of errors</returns>
-        private static PlyHeader ParsePlyHeader(MixReader stream)
-        {
+        private static PlyHeader ParsePlyHeader(MixReader stream) {
             bool eos = false;
             string magic = stream.ReadLineAsString(ref eos);
-            if (magic != "ply")
-            {
+            if (magic != "ply") {
                 Log.Error("Trying to load invalid .ply file");
                 return null;
             }
 
-            if (eos)
-            {
+            if (eos) {
                 Log.Error("Trying to load empty .ply file");
                 return null;
             }
 
             PlyHeader header = new();
             int facePropCounter = 0;
-            while (!eos)
-            {
+            while (!eos) {
                 string line = stream.ReadLineAsString(ref eos);
                 string[] parts = line.Split();
                 if (parts.Length == 0)
                     continue;
 
                 string action = parts[0];
-                if (action == "comment")
-                {
+                if (action == "comment") {
                     continue;
-                }
-                else if (action == "format")
-                {
-                    if (!IsAllowedMethod(parts[1]))
-                    {
+                } else if (action == "format") {
+                    if (!IsAllowedMethod(parts[1])) {
                         Log.Warning($"Unknown format {parts[1]} given. Ignoring it");
                         continue;
                     }
 
                     header.Method = parts[1];
-                }
-                else if (action == "element")
-                {
+                } else if (action == "element") {
                     string type = parts[1];
                     if (type == "vertex")
                         header.VertexCount = int.Parse(parts[2]);
@@ -364,12 +303,9 @@ namespace Mitsuba2SeeSharp
                         header.FaceCount = int.Parse(parts[2]);
                     else
                         Log.Warning($"Unknown element type {type}");
-                }
-                else if (action == "property")
-                {
+                } else if (action == "property") {
                     string type = parts[1];
-                    if (type == "float")
-                    {
+                    if (type == "float") {
                         string name = parts[2];
                         if (name == "x")
                             header.XElem = header.VertexPropCount;
@@ -388,42 +324,32 @@ namespace Mitsuba2SeeSharp
                         else if (name == "v")
                             header.VElem = header.VertexPropCount;
                         ++header.VertexPropCount;
-                    }
-                    else if (type == "list")
-                    {
+                    } else if (type == "list") {
                         ++facePropCounter;
 
                         string countType = parts[2];
                         string indType = parts[3];
                         string name = parts[4];
 
-                        if (!IsAllowedVertCountType(countType))
-                        {
+                        if (!IsAllowedVertCountType(countType)) {
                             Log.Error($"Only 'property list uchar int' is supported. Ignoring {countType}");
                             continue;
                         }
 
-                        if (!IsAllowedVertIndType(indType))
-                        {
+                        if (!IsAllowedVertIndType(indType)) {
                             Log.Error($"Only 'property list uchar int' is supported. Ignoring {indType}");
                             continue;
                         }
 
                         if (name == "vertex_indices")
                             header.IndElem = facePropCounter - 1;
-                    }
-                    else
-                    {
+                    } else {
                         Log.Error($"Only float or list properties allowed. Ignoring {type}");
                         ++header.VertexPropCount;
                     }
-                }
-                else if (action == "end_header")
-                {
+                } else if (action == "end_header") {
                     break;
-                }
-                else
-                {
+                } else {
                     Log.Warning($"Unknown header entry {action}");
                 }
             }
@@ -434,25 +360,20 @@ namespace Mitsuba2SeeSharp
         /// <summary>
         /// Will parse the whole file, starting with the header and following up with the data region
         /// </summary>
-        private static Mesh ParsePlyFile(MixReader stream)
-        {
+        private static Mesh ParsePlyFile(MixReader stream) {
             PlyHeader header = ParsePlyHeader(stream);
             if (header == null) return null;
 
-            if (!header.HasVertices || !header.HasIndices)
-            {
+            if (!header.HasVertices || !header.HasIndices) {
                 Log.Error("Reached end of stream without data");
                 return null;
             }
 
             // Setup reader
             IDataReader reader;
-            if (header.IsBinary)
-            {
+            if (header.IsBinary) {
                 reader = new BinaryDataReader(header, stream);
-            }
-            else
-            {
+            } else {
                 reader = new AsciiDataReader(header, stream);
             }
 
@@ -463,8 +384,7 @@ namespace Mitsuba2SeeSharp
             if (header.HasUVs) mesh.TexCoords.Capacity = header.VertexCount;
 
             // Read per vertex stuff
-            for (int i = 0; i < header.VertexCount; ++i)
-            {
+            for (int i = 0; i < header.VertexCount; ++i) {
                 (Vector3 vertex, Vector3 normal, Vector2 tex) = reader.ReadPerVertexLine();
 
                 mesh.Vertices.Add(vertex);
@@ -473,14 +393,12 @@ namespace Mitsuba2SeeSharp
             }
 
             // Read per face indices
-            if (header.IndElem != 0)
-            {
+            if (header.IndElem != 0) {
                 Log.Warning("No support for multiple face properties. Assuming first entry to be the list of indices");
             }
 
             List<Face> faces = new();
-            for (int i = 0; i < header.FaceCount; ++i)
-            {
+            for (int i = 0; i < header.FaceCount; ++i) {
                 faces.Add(reader.ReadFaceLine());
             }
             mesh.Indices = ToTriangleList(faces);
