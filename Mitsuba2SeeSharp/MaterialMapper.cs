@@ -1,29 +1,24 @@
-﻿using System.IO;
-using TinyParserMitsuba;
+﻿using TinyParserMitsuba;
 
 namespace Mitsuba2SeeSharp
 {
     public static class MaterialMapper
     {
-        public static SeeMaterial Map(SceneObject bsdf, Options options, string overrideID = "")
+        public static SeeMaterial Map(SceneObject bsdf, ref LoadContext ctx, string overrideID = "")
         {
             string id = overrideID == "" ? bsdf.ID : overrideID;
-            if (id == "")
-            {
-                Log.Error("Given " + bsdf.PluginType + " has no id");
-                return null;
-            }
+            if (id == "") id = string.Format("__material_{0}", ctx.Scene.materials.Count);
 
             SeeMaterial mat = null;
             if (bsdf.PluginType == "twosided")
             {
                 // Silently ignore
-                return Map(bsdf.AnonymousChildren[0], options, id);
+                return Map(bsdf.AnonymousChildren[0], ref ctx, id);
             }
             else if (bsdf.PluginType == "diffuse")
             {
                 mat = new() { name = id, type = "diffuse" };
-                mat.baseColor = ExtractCT(bsdf, "reflectance", options);
+                mat.baseColor = ExtractCT(bsdf, "reflectance", ctx.Options);
                 mat.roughness = 1;
             }
             else if (bsdf.PluginType == "dielectric" || bsdf.PluginType == "thindielectric" || bsdf.PluginType == "roughdielectric")
@@ -44,7 +39,7 @@ namespace Mitsuba2SeeSharp
                 float alpha_def = bsdf.PluginType == "roughconductor" ? 0.5f : 0.5f;
 
                 mat = new() { name = id, type = "generic" };
-                mat.baseColor = ExtractCT(bsdf, "specular_reflectance", options);
+                mat.baseColor = ExtractCT(bsdf, "specular_reflectance", ctx.Options);
                 mat.IOR = ExtractNumber(bsdf, "eta", 4.9f);
                 mat.roughness = ExtractNumber(bsdf, "alpha", alpha_def);
                 mat.metallic = 1;
@@ -54,7 +49,7 @@ namespace Mitsuba2SeeSharp
                 float alpha_def = bsdf.PluginType == "roughplastic" ? 0.5f : 0.5f;
 
                 mat = new() { name = id, type = "generic" };
-                mat.baseColor = ExtractCT(bsdf, "diffuse_reflectance", options);
+                mat.baseColor = ExtractCT(bsdf, "diffuse_reflectance", ctx.Options);
                 mat.IOR = ExtractNumber(bsdf, "int_ior", 1.49f);
                 mat.roughness = ExtractNumber(bsdf, "alpha", alpha_def);
                 mat.metallic = 0;

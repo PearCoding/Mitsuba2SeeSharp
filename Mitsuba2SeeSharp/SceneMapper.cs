@@ -1,28 +1,35 @@
-﻿using System.Diagnostics;
+﻿using System.Collections.Generic;
 using System.IO;
 using TinyParserMitsuba;
 
 namespace Mitsuba2SeeSharp
 {
+    public class LoadContext
+    {
+        public Options Options;
+        public SeeScene Scene = new();
+        public HashSet<string> MaterialNames = new();
+    }
+
     public static class SceneMapper
     {
         public static SeeScene Map(Scene scene, Options options)
         {
-            SeeScene mappedScene = new();
-            mappedScene.name = string.Format("{0}_{1}_{2}_{3}", Path.GetFileNameWithoutExtension(options.Input), scene.MajorVersion, scene.MinorVersion, scene.PatchVersion);
+            LoadContext ctx = new() { Options = options };
+            ctx.Scene.name = string.Format("{0}_{1}_{2}_{3}", Path.GetFileNameWithoutExtension(options.Input), scene.MajorVersion, scene.MinorVersion, scene.PatchVersion);
 
             foreach (var child in scene.AnonymousChildren)
             {
                 switch (child.Type)
                 {
                     case ObjectType.Sensor:
-                        HandleSensor(ref mappedScene, child, options);
+                        HandleSensor(ref ctx, child);
                         break;
                     case ObjectType.Bsdf:
-                        HandleBsdf(ref mappedScene, child, options);
+                        HandleBsdf(ref ctx, child);
                         break;
                     case ObjectType.Shape:
-                        HandleShape(ref mappedScene, child, options);
+                        HandleShape(ref ctx, child);
                         break;
                     case ObjectType.Emitter:
                         // TODO
@@ -37,17 +44,17 @@ namespace Mitsuba2SeeSharp
                 }
             }
 
-            return mappedScene;
+            return ctx.Scene;
         }
 
-        private static void HandleSensor(ref SeeScene scene, SceneObject sensor, Options options)
+        private static void HandleSensor(ref LoadContext ctx, SceneObject sensor)
         {
-            string suffix = scene.cameras.Count == 0 ? "" : scene.cameras.Count.ToString();
+            string suffix = ctx.Scene.cameras.Count == 0 ? "" : ctx.Scene.cameras.Count.ToString();
 
             // Setup camera transform
-            var seeTransform = MapperUtils.ExtractTransform(sensor, options);
+            var seeTransform = MapperUtils.ExtractTransform(sensor, ctx.Options);
             seeTransform.name = "__camera" + suffix;
-            scene.transforms.Add(seeTransform);
+            ctx.Scene.transforms.Add(seeTransform);
 
             // Setup actual camera
             SeeCamera seeCamera = new();
@@ -66,22 +73,26 @@ namespace Mitsuba2SeeSharp
                 seeCamera.fov = 60;
             }
 
-            scene.cameras.Add(seeCamera);
+            ctx.Scene.cameras.Add(seeCamera);
         }
 
-        private static void HandleBsdf(ref SeeScene scene, SceneObject bsdf, Options options)
+        private static void HandleBsdf(ref LoadContext ctx, SceneObject bsdf)
         {
-            SeeMaterial mat = MaterialMapper.Map(bsdf, options);
-            if (mat != null) scene.materials.Add(mat);
+            SeeMaterial mat = MaterialMapper.Map(bsdf, ref ctx);
+            if (mat != null)
+            {
+                ctx.Scene.materials.Add(mat);
+                ctx.MaterialNames.Add(mat.name);
+            }
         }
 
-        private static void HandleShape(ref SeeScene scene, SceneObject shape, Options options)
+        private static void HandleShape(ref LoadContext ctx, SceneObject shape)
         {
-            SeeMesh mesh = ShapeMapper.Map(shape, options);
+            SeeMesh mesh = ShapeMapper.Map(shape, ref ctx);
             if (mesh != null)
             {
-                mesh.name = string.Format("mesh_{0}", scene.objects.Count); // Mitsuba does not require names for shapes 
-                scene.objects.Add(mesh);
+                mesh.name = string.Format("mesh_{0}", ctx.Scene.objects.Count); // Mitsuba does not require names for shapes 
+                ctx.Scene.objects.Add(mesh);
             }
         }
     }

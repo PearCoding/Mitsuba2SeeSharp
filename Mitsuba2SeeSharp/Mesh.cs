@@ -36,6 +36,14 @@ namespace Mitsuba2SeeSharp
             }
         }
 
+        public void FlipNormals()
+        {
+            for (int i = 0; i < Normals.Count; ++i)
+            {
+                Normals[i] = -Normals[i];
+            }
+        }
+
         public byte[] ToPly()
         {
             List<byte> data = new();
