@@ -9,10 +9,10 @@ namespace Mitsuba2SeeSharp.Tests {
 
         [Test]
         public void Load() {
-            Mesh mesh = SerializedLoader.ParseFile(Path.Join(TestContext.CurrentContext.TestDirectory, "data", "sponza.serialized"));
+            Mesh mesh = SerializedLoader.ParseFile(Path.Join(TestContext.CurrentContext.TestDirectory, "data", "bidir.serialized"));
             Assert.NotNull(mesh);
-            Assert.AreEqual(200, mesh.Vertices.Count);
-            Assert.AreEqual(192, mesh.FaceCount);
+            Assert.AreEqual(1083, mesh.Vertices.Count);
+            Assert.AreEqual(2162, mesh.FaceCount);
         }
     }
 }

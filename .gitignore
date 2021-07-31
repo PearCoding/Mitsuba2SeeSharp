@@ -361,3 +361,8 @@ MigrationBackup/
 
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
+
+# We do not want the local launch settings of users
+launchSettings.json
+
+!cbox_smallbox.obj
