@@ -1,8 +1,0 @@
-{
-  "profiles": {
-    "Mitsuba2SeeSharp": {
-      "commandName": "Project",
-      "commandLineArgs": "C:\\Users\\Haddington\\Downloads\\staircase\\staircase\\scene.xml"
-    }
-  }
-}
