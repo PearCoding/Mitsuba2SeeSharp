@@ -2,6 +2,7 @@
 using System.Diagnostics;
 using System.IO;
 using TinyParserMitsuba;
+using System.Linq;
 
 namespace Mitsuba2SeeSharp {
     public static class MapperUtils {
@@ -13,6 +14,7 @@ namespace Mitsuba2SeeSharp {
 
                 for (int i = 0; i < transform.Length; ++i)
                     seeTransform.matrix.elements[i] = (float)transform[i];
+                seeTransform.matrix.Transpose(); // Mitsuba matrices are the transpose of SeeSharp ones
 
                 return seeTransform;
             } else {
@@ -20,19 +22,27 @@ namespace Mitsuba2SeeSharp {
             }
         }
 
-        /// <summary>
-        /// Returns true if the given transform is identity
-        /// </summary>
-        /// <param name="transform"></param>
-        /// <returns></returns>
-        public static bool IsTransformIdentity(SeeTransform transform) {
-            for (int i = 0; i < 4; ++i) {
-                for (int j = 0; j < 4; ++j) {
-                    float expected = i == j ? 1 : 0;
-                    if (MathF.Abs(transform.matrix.elements[i * 4 + j] - expected) > 1e-5f) return false;
+        public static SeeVector ExtractColor(Property prop, bool emissive = false) {
+            if (prop.Type == PropertyType.Color) {
+                double[] val = prop.GetColor();
+                return new() { x = (float)val[0], y = (float)val[0], z = (float)val[0] };
+            } else if (prop.Type == PropertyType.Spectrum) {
+                var spectrum = prop.GetSpectrum();
+                if (spectrum.IsUniform) {
+                    return SeeRGB.Gray((float)spectrum.Weights[0]).value;
+                } else {
+                    Log.Warning("Full spectra is not implemented. Mapping to sRGB");
+                    float[] wvls = spectrum.Wavelengths.Select(a => (float)a).ToArray();
+                    float[] weights = spectrum.Weights.Select(a => (float)a).ToArray();
+
+                    (float x, float y, float z) = SpectralMapper.Eval(wvls, weights, emissive);
+                    (float r, float g, float b) = SpectralMapper.MapRGB(x, y, z);
+                    return new() { x = r, y = g, z = b };
                 }
+            } else {// TODO: Blackbody
+                Log.Error("Given color property has type " + prop.Type.ToString() + " which is currently not supported");
+                return null;
             }
-            return true;
         }
 
         // Create filename from given path to a file and the output

@@ -16,25 +16,39 @@ namespace Mitsuba2SeeSharp {
         public int FaceCount => Indices.Count / 3;
 
         public void ApplyTransform(SeeTransform transform) {
-            Matrix4x4 m = new(
-                transform.matrix.elements[0], transform.matrix.elements[1], transform.matrix.elements[2], transform.matrix.elements[3],
-                transform.matrix.elements[4], transform.matrix.elements[5], transform.matrix.elements[6], transform.matrix.elements[7],
-                transform.matrix.elements[8], transform.matrix.elements[9], transform.matrix.elements[10], transform.matrix.elements[11],
-                transform.matrix.elements[12], transform.matrix.elements[13], transform.matrix.elements[14], transform.matrix.elements[15]);
+            if (transform.IsIdentity)
+                return;
 
-            for (int i = 0; i < Vertices.Count; ++i) {
-                Vertices[i] = Vector3.Transform(Vertices[i], m);
-            }
-
-            for (int i = 0; i < Normals.Count; ++i) {
-                Normals[i] = Vector3.TransformNormal(Normals[i], m);
-            }
+            transform.TransformList(ref Vertices);
+            transform.TransformNormalList(ref Normals);
         }
 
         public void FlipNormals() {
             for (int i = 0; i < Normals.Count; ++i) {
                 Normals[i] = -Normals[i];
             }
+        }
+
+        public void FlipTexUp() {
+            for (int i = 0; i < TexCoords.Count; ++i) {
+                var tex = TexCoords[i];
+                tex.Y *= -1;
+                TexCoords[i] = tex;
+            }
+        }
+
+        public float SurfaceArea { get => GetSurfaceArea(); }
+
+        public float GetSurfaceArea() {
+            float area = 0;
+            for (int face = 0; face < FaceCount; ++face) {
+                var v1 = Vertices[Indices[face * 3 + 0]];
+                var v2 = Vertices[Indices[face * 3 + 1]];
+                var v3 = Vertices[Indices[face * 3 + 2]];
+                Vector3 n = Vector3.Cross(v2 - v1, v3 - v1);
+                area += n.Length() * 0.5f;
+            }
+            return area;
         }
 
         public byte[] ToPly() {
@@ -63,8 +77,8 @@ namespace Mitsuba2SeeSharp {
             for (int i = 0; i < FaceCount; ++i) {
                 data.Add(3);//Byte
                 data.AddRange(BitConverter.GetBytes(Indices[i * 3 + 0]));
-                data.AddRange(BitConverter.GetBytes(Indices[i * 3 + 0]));
-                data.AddRange(BitConverter.GetBytes(Indices[i * 3 + 0]));
+                data.AddRange(BitConverter.GetBytes(Indices[i * 3 + 1]));
+                data.AddRange(BitConverter.GetBytes(Indices[i * 3 + 2]));
             }
 
             return data.ToArray();

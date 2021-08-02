@@ -1,4 +1,5 @@
 ﻿using System.IO;
+using System.Linq;
 using TinyParserMitsuba;
 
 namespace Mitsuba2SeeSharp {
@@ -16,7 +17,8 @@ namespace Mitsuba2SeeSharp {
                     return null;
 
                 SeeTransform transform = MapperUtils.ExtractTransform(shape, ctx.Options);
-                actualMesh.ApplyTransform(transform);
+                if (transform != null) actualMesh.ApplyTransform(transform);
+
                 if (flip_normals)
                     actualMesh.FlipNormals();
 
@@ -24,7 +26,6 @@ namespace Mitsuba2SeeSharp {
                 File.WriteAllBytes(newpath, actualMesh.ToPly());
                 mesh.relativePath = MapperUtils.PathToUnix(MapperUtils.MakeItRelative(newpath, ctx.Options));
             } else if (shape.PluginType == "serialized") {
-                SeeTransform transform = MapperUtils.ExtractTransform(shape, ctx.Options);
                 int shapeIndex = 0;
                 if (shape.Properties.ContainsKey("shape")) {
                     shapeIndex = (int)shape.Properties["shape"].GetInteger();
@@ -35,13 +36,21 @@ namespace Mitsuba2SeeSharp {
                 if (actualMesh == null)
                     return null;
 
-                actualMesh.ApplyTransform(transform);
+                SeeTransform transform = MapperUtils.ExtractTransform(shape, ctx.Options);
+                if (transform != null) actualMesh.ApplyTransform(transform);
+
+                // Simple test to prevent useless geometry
+                if (actualMesh.SurfaceArea <= 1e-6f) {
+                    Log.Error("Given shape has no surface. Ignoring it");
+                    return null;
+                }
+
+                actualMesh.FlipTexUp();
 
                 string newpath = MapperUtils.CreatePlyPath(filename, ctx.Options);
                 File.WriteAllBytes(newpath, actualMesh.ToPly());
                 mesh.relativePath = MapperUtils.PathToUnix(MapperUtils.MakeItRelative(newpath, ctx.Options));
             } else if (shape.PluginType == "obj") {
-                SeeTransform transform = MapperUtils.ExtractTransform(shape, ctx.Options);
                 int shapeIndex = 0;
                 if (shape.Properties.ContainsKey("shape")) {
                     shapeIndex = (int)shape.Properties["shape"].GetInteger();
@@ -52,7 +61,16 @@ namespace Mitsuba2SeeSharp {
                 if (actualMesh == null)
                     return null;
 
-                actualMesh.ApplyTransform(transform);
+                SeeTransform transform = MapperUtils.ExtractTransform(shape, ctx.Options);
+                if (transform != null) actualMesh.ApplyTransform(transform);
+
+                // Simple test to prevent useless geometry
+                if (actualMesh.SurfaceArea <= 1e-6f) {
+                    Log.Error("Given shape has no surface. Ignoring it");
+                    return null;
+                }
+
+                actualMesh.FlipTexUp();
 
                 string newpath = MapperUtils.CreatePlyPath(filename, ctx.Options);
                 File.WriteAllBytes(newpath, actualMesh.ToPly());
@@ -60,13 +78,19 @@ namespace Mitsuba2SeeSharp {
             } else if (shape.PluginType == "ply") {
                 SeeTransform transform = MapperUtils.ExtractTransform(shape, ctx.Options);
 
-                if (!MapperUtils.IsTransformIdentity(transform)) {
+                if (transform != null && !transform.IsIdentity) {
                     string filename = MapperUtils.ExtractFilenameAbsolute(shape, ctx.Options);
                     Mesh actualMesh = PlyLoader.ParseFile(filename);
                     if (actualMesh == null)
                         return null;
 
-                    actualMesh.ApplyTransform(transform);
+                    // Simple test to prevent useless geometry
+                    if (actualMesh.SurfaceArea <= 1e-6f) {
+                        Log.Error("Given shape has no surface. Ignoring it");
+                        return null;
+                    }
+
+                    actualMesh.FlipTexUp();
 
                     string newpath = MapperUtils.CreatePlyPath(filename, ctx.Options);
                     File.WriteAllBytes(newpath, actualMesh.ToPly());
@@ -97,6 +121,29 @@ namespace Mitsuba2SeeSharp {
                     } else {
                         mesh.material = child.ID;
                     }
+                    break;
+                }
+            }
+
+            // Handle emitter association
+            foreach (SceneObject child in shape.AnonymousChildren) {
+                if (child.Type == ObjectType.Emitter) {
+                    if (child.PluginType != "area") {
+                        Log.Error("Currently no support for " + child.PluginType + " emitter type for shapes");
+                        continue;
+                    }
+
+                    // Get emission color
+                    SeeRGB emission = SeeRGB.Black;
+                    if (child.Properties.ContainsKey("radiance")) {
+                        var prop = child.Properties["radiance"];
+                        var value = MapperUtils.ExtractColor(prop, true);
+
+                        emission = new SeeRGB() { value = value ?? (new() { x = 0, y = 0, z = 0 }) };
+                    }
+
+                    mesh.emission = emission;
+
                     break;
                 }
             }

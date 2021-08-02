@@ -1,4 +1,5 @@
 ﻿using TinyParserMitsuba;
+using System;
 
 namespace Mitsuba2SeeSharp {
     public static class MaterialMapper {
@@ -20,7 +21,7 @@ namespace Mitsuba2SeeSharp {
                 mat = new() { name = id, type = "generic" };
                 mat.baseColor = SeeColorOrTexture.White;
                 mat.IOR = ExtractNumber(bsdf, "int_ior", 1.5046f);
-                mat.roughness = ExtractNumber(bsdf, "alpha", alpha_def);
+                mat.roughness = MathF.Sqrt(ExtractNumber(bsdf, "alpha", alpha_def));
                 mat.specularTint = 1;
                 mat.specularTransmittance = ExtractNumber(bsdf, "specular_transmittance", 1.0f);
 
@@ -31,7 +32,7 @@ namespace Mitsuba2SeeSharp {
                 mat = new() { name = id, type = "generic" };
                 mat.baseColor = ExtractCT(bsdf, "specular_reflectance", ctx.Options);
                 mat.IOR = ExtractNumber(bsdf, "eta", 4.9f);
-                mat.roughness = ExtractNumber(bsdf, "alpha", alpha_def);
+                mat.roughness = MathF.Sqrt(ExtractNumber(bsdf, "alpha", alpha_def));
                 mat.metallic = 1;
             } else if (bsdf.PluginType == "plastic" || bsdf.PluginType == "roughplastic") {
                 float alpha_def = bsdf.PluginType == "roughplastic" ? 0.5f : 0.5f;
@@ -39,8 +40,8 @@ namespace Mitsuba2SeeSharp {
                 mat = new() { name = id, type = "generic" };
                 mat.baseColor = ExtractCT(bsdf, "diffuse_reflectance", ctx.Options);
                 mat.IOR = ExtractNumber(bsdf, "int_ior", 1.49f);
-                mat.roughness = ExtractNumber(bsdf, "alpha", alpha_def);
-                mat.metallic = 0;
+                mat.roughness = MathF.Sqrt(ExtractNumber(bsdf, "alpha", alpha_def));
+                mat.metallic = 0; // TODO: Get anisotropy
             } else {
                 Log.Error("Currently no support for " + bsdf.PluginType + " type of bsdfs");
             }
@@ -54,12 +55,12 @@ namespace Mitsuba2SeeSharp {
                 ct.type = "rgb";
 
                 Property prop = obj.Properties[key];
-                ct.value = ExtractColor(prop);
+                ct.value = MapperUtils.ExtractColor(prop);
                 if (ct.value == null)
                     return null;
             } else if (obj.NamedChildren.ContainsKey(key))// Texture
               {
-                ct.type = "texture";
+                ct.type = "image";
 
                 SceneObject tex = obj.NamedChildren[key];
                 string filename = ExtractTexture(tex);
@@ -67,19 +68,13 @@ namespace Mitsuba2SeeSharp {
                     return null;
 
                 ct.filename = MapperUtils.MakeItRelative(filename, options);
+            } else {
+                Log.Error("Invalid color property given");
+                ct.type = "rgb";
+                ct.value = new() { x = 0, y = 0, z = 0 };
             }
 
             return ct;
-        }
-
-        private static SeeVector ExtractColor(Property prop) {
-            if (prop.Type == PropertyType.Color) {
-                double[] val = prop.GetColor();
-                return new() { x = (float)val[0], y = (float)val[0], z = (float)val[0] };
-            } else {
-                Log.Error("Given color property has type " + prop.Type.ToString() + " which is currently not supported");
-                return null;
-            }
         }
 
         private static string ExtractTexture(SceneObject obj) {
@@ -102,6 +97,13 @@ namespace Mitsuba2SeeSharp {
                 return (float)prop.GetNumber((double)def);
             }
             return def;
+        }
+
+        public static SeeMaterial CreateBlack(string id) {
+            SeeMaterial mat = new() { name = id, type = "diffuse" };
+            mat.baseColor = SeeColorOrTexture.Black;
+            mat.roughness = 1;
+            return mat;
         }
     }
 }

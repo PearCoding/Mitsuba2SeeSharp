@@ -26,7 +26,7 @@ namespace Mitsuba2SeeSharp {
                         HandleShape(ref ctx, child);
                         break;
                     case ObjectType.Emitter:
-                        // TODO
+                        EmitterMapper.Setup(child, ref ctx);// Only care about envmap
                         break;
                     case ObjectType.Texture:
                     case ObjectType.Integrator:
@@ -46,6 +46,11 @@ namespace Mitsuba2SeeSharp {
 
             // Setup camera transform
             SeeTransform seeTransform = MapperUtils.ExtractTransform(sensor, ctx.Options);
+
+            // SeeSharp looks at -Z, Mitsuba is +Z
+            seeTransform.FlipX();
+            seeTransform.FlipZ();
+
             seeTransform.name = "__camera" + suffix;
             ctx.Scene.transforms.Add(seeTransform);
 
