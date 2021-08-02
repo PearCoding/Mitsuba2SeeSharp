@@ -1,4 +1,4 @@
-# Mitsuba2SeeSharp
+# Mitsuba2SeeSharp [![Build](https://github.com/PearCoding/Mitsuba2SeeSharp/actions/workflows/build.yml/badge.svg)](https://github.com/PearCoding/Mitsuba2SeeSharp/actions/workflows/build.yml)
 
 Simple tool to convert a big subset of mitsuba scene files to the SeeSharp renderer
 
