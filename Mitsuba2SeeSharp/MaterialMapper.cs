@@ -20,8 +20,10 @@ namespace Mitsuba2SeeSharp {
 
                 mat = new() { name = id, type = "generic" };
                 mat.baseColor = SeeColorOrTexture.White;
-                mat.IOR = ExtractNumber(bsdf, "int_ior", 1.5046f);
-                mat.roughness = MathF.Sqrt(ExtractNumber(bsdf, "alpha", alpha_def));
+                mat.IOR = ExtractIOR(bsdf, "int_ior", 1.5046f);
+
+                (mat.roughness, mat.anisotropic) = ExtractRoughness(bsdf, alpha_def);
+
                 mat.specularTint = 1;
                 mat.specularTransmittance = ExtractNumber(bsdf, "specular_transmittance", 1.0f);
 
@@ -31,8 +33,8 @@ namespace Mitsuba2SeeSharp {
 
                 mat = new() { name = id, type = "generic" };
                 mat.baseColor = ExtractCT(bsdf, "specular_reflectance", ctx.Options);
-                mat.IOR = ExtractNumber(bsdf, "eta", 4.9f);
-                mat.roughness = MathF.Sqrt(ExtractNumber(bsdf, "alpha", alpha_def));
+                mat.IOR = ExtractIOR(bsdf, "eta", 4.9f);// TODO: Not really the same as IOR
+                (mat.roughness, mat.anisotropic) = ExtractRoughness(bsdf, alpha_def);
                 mat.metallic = 1;
             } else if (bsdf.PluginType == "plastic" || bsdf.PluginType == "roughplastic") {
                 float alpha_def = bsdf.PluginType == "roughplastic" ? 0.5f : 0.5f;
@@ -40,8 +42,8 @@ namespace Mitsuba2SeeSharp {
                 mat = new() { name = id, type = "generic" };
                 mat.baseColor = ExtractCT(bsdf, "diffuse_reflectance", ctx.Options);
                 mat.IOR = ExtractNumber(bsdf, "int_ior", 1.49f);
-                mat.roughness = MathF.Sqrt(ExtractNumber(bsdf, "alpha", alpha_def));
-                mat.metallic = 0; // TODO: Get anisotropy
+                (mat.roughness, mat.anisotropic) = ExtractRoughness(bsdf, alpha_def);
+                mat.metallic = 0;
             } else {
                 Log.Error("Currently no support for " + bsdf.PluginType + " type of bsdfs");
             }
@@ -91,10 +93,67 @@ namespace Mitsuba2SeeSharp {
             return filename.GetString();
         }
 
+        private static float ExtractIOR(SceneObject obj, string key, float def) {
+            if (obj.Properties.ContainsKey(key)) {
+                Property prop = obj.Properties[key];
+                if (prop.Type == PropertyType.String) {
+                    string lookup = prop.GetString();
+                    switch (lookup.ToLower()) {
+                        case "vacuum": return 1.0f;
+                        case "bromine": return 1.661f;
+                        case "helium": return 1.00004f;
+                        case "water ice": return 1.31f;
+                        case "hydrogen": return 1.00013f;
+                        case "fused quartz": return 1.458f;
+                        case "air": return 1.00028f;
+                        case "pyrex": return 1.47f;
+                        case "carbon dioxide": return 1.00045f;
+                        case "acrylic glass": return 1.49f;
+                        case "water": return 1.333f;
+                        case "polypropylene": return 1.49f;
+                        case "acetone": return 1.36f;
+                        case "bk7": return 1.5046f;
+                        case "ethanol": return 1.361f;
+                        case "sodium chloride": return 1.544f;
+                        case "carbon tetrachloride": return 1.461f;
+                        case "amber": return 1.55f;
+                        case "glycerol": return 1.4729f;
+                        case "pet": return 1.575f;
+                        case "benzene": return 1.501f;
+                        case "diamond": return 2.419f;
+                        case "silicone oil": return 1.52045f;
+                        default:
+                            Log.Error($"Unknown IOR '{lookup}'");
+                            return def;
+                    }
+
+                } else {
+                    return (float)prop.GetNumber(def);
+                }
+            }
+            return def;
+        }
+
+        private static (float, float) ExtractRoughness(SceneObject obj, float def) {
+            if (obj.Properties.ContainsKey("alpha")) {
+                float roughness = MathF.Sqrt((float)ExtractNumber(obj, "alpha", def));
+                return (roughness, 0);
+            } else {
+                float roughness_x = MathF.Sqrt((float)ExtractNumber(obj, "alpha_u", def));
+                float roughness_y = MathF.Sqrt((float)ExtractNumber(obj, "alpha_v", roughness_x * roughness_x));
+
+                if (roughness_x == 0 && roughness_y == 0)
+                    return (0, 0);
+
+                float anisotropy = MathF.Abs(roughness_x - roughness_y) / MathF.Max(roughness_x, roughness_y);
+                return (MathF.Max(roughness_x, roughness_y), anisotropy);
+            }
+        }
+
         private static float ExtractNumber(SceneObject obj, string key, float def) {
             if (obj.Properties.ContainsKey(key)) {
                 Property prop = obj.Properties[key];
-                return (float)prop.GetNumber((double)def);
+                return (float)prop.GetNumber(def);
             }
             return def;
         }
