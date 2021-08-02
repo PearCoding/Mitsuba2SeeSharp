@@ -16,10 +16,10 @@ Simple tool to convert a big subset of mitsuba scene files to the SeeSharp rende
    - Rectangle shapes
  - Single hierarchy bsdfs (no `blendbsdf` etc)
    - Note, `twosided` is ignored and the inner bsdf is used instead
-   - All except `diffuse` bsdfs are mapped to generic SeeSharp material (which is a Disney bsdf)
+   - All except `diffuse` bsdfs are mapped to generic SeeSharp material (which is a Disney/Principled bsdf)
  - A subset of emitters
-   - `area` (TODO)
-   - `envmap` (TODO)
+   - `area`
+   - `envmap`
  - Bitmap images
  - Perspective camera
 
