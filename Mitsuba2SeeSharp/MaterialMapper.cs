@@ -33,7 +33,14 @@ namespace Mitsuba2SeeSharp {
 
                 mat = new() { name = id, type = "generic" };
                 mat.baseColor = ExtractCT(bsdf, "specular_reflectance", ctx.Options);
-                mat.IOR = ExtractIOR(bsdf, "eta", 4.9f);// TODO: Not really the same as IOR
+
+                if (bsdf.Properties.ContainsKey("material")) {
+                    // TODO: No support for kappa?
+                    (float eta, _) = ExtractConductor(bsdf, "material");
+                    mat.IOR = eta;
+                } else {
+                    mat.IOR = ExtractIOR(bsdf, "eta", 4.9f);// TODO: Not really the same as IOR
+                }
                 (mat.roughness, mat.anisotropic) = ExtractRoughness(bsdf, alpha_def);
                 mat.metallic = 1;
             } else if (bsdf.PluginType == "plastic" || bsdf.PluginType == "roughplastic") {
@@ -132,6 +139,25 @@ namespace Mitsuba2SeeSharp {
                 }
             }
             return def;
+        }
+
+        private static (float, float) ExtractConductor(SceneObject obj, string key, string def = "cu") {
+            string lookup = def;
+            if (obj.Properties.ContainsKey(key)) {
+                Property prop = obj.Properties[key];
+                if (prop.Type == PropertyType.String)
+                    lookup = prop.GetString();
+            }
+
+            switch (lookup.ToLower()) {
+                case "ag": return (0.129f, 3.250f);
+                case "au": return (0.402f, 2.540f);
+                case "cu": return (1.040f, 2.583f);
+                case "none": return (0, 1);
+                default:
+                    Log.Error($"Unknown conductor material '{lookup}'");
+                    goto case "cu";
+            }
         }
 
         private static (float, float) ExtractRoughness(SceneObject obj, float def) {
