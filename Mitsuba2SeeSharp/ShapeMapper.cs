@@ -101,11 +101,8 @@ namespace Mitsuba2SeeSharp {
                 }
             } else {
                 Log.Error("Currently no support for " + shape.PluginType + " shapes");
-            }
-
-            // Had errors, give up
-            if (mesh == null)
                 return null;
+            }
 
             // Handle material assosciation
             foreach (SceneObject child in shape.AnonymousChildren) {
