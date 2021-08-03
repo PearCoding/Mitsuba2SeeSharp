@@ -11,6 +11,16 @@ namespace Mitsuba2SeeSharp {
             if (bsdf.PluginType == "twosided") {
                 // Silently ignore
                 return Map(bsdf.AnonymousChildren[0], ref ctx, id);
+            } else if (bsdf.PluginType == "bumpmap" || bsdf.PluginType == "normalmap"
+                    || bsdf.PluginType == "blendbsdf" || bsdf.PluginType == "mask") {
+                foreach (var child in bsdf.AnonymousChildren) {
+                    if (child.Type == ObjectType.Bsdf) {
+                        Log.Warning("Currently no support for " + bsdf.PluginType + " type of bsdfs. Using first inner bsdf instead");
+                        return Map(child, ref ctx, id);
+                    }
+                }
+
+                Log.Error("Currently no support for " + bsdf.PluginType + " type of bsdfs");
             } else if (bsdf.PluginType == "diffuse") {
                 mat = new() { name = id, type = "diffuse" };
                 mat.baseColor = ExtractCT(bsdf, "reflectance", ctx.Options);
