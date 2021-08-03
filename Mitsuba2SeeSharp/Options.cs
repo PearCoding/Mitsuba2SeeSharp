@@ -19,5 +19,10 @@ namespace Mitsuba2SeeSharp {
             Default = false)]
         public bool KeepUnusedMaterials { get; set; }
         public string MeshDirectory { get; set; } = "meshes";
+
+        [Option('V', "verbose",
+            HelpText = "Print out more information",
+            Default = false)]
+        public bool Verbose { get; set; }
     }
 }

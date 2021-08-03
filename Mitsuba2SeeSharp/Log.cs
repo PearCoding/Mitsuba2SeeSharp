@@ -2,8 +2,10 @@
 
 namespace Mitsuba2SeeSharp {
     public static class Log {
+        public static bool Verbose { get; internal set; }
+
         public static void Info(string msg) {
-            Console.WriteLine("[Info   ] " + msg);
+            if (Verbose) Console.WriteLine("[Info   ] " + msg);
         }
 
         public static void Warning(string msg) {
@@ -19,5 +21,5 @@ namespace Mitsuba2SeeSharp {
             Console.WriteLine("[Error  ] " + msg);
             Console.ForegroundColor = previous;
         }
-    };
+    }
 }

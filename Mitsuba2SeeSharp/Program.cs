@@ -11,6 +11,8 @@ namespace Mitsuba2SeeSharp {
         }
 
         static void Run(Options opts) {
+            Log.Verbose = opts.Verbose;
+
             SceneLoader loader = new();
 
             DirectoryInfo parent = Directory.GetParent(opts.Input);
@@ -35,7 +37,8 @@ namespace Mitsuba2SeeSharp {
 
             string outputString = JsonSerializer.Serialize(seeScene, jsonOptions);
 
-            Console.WriteLine(outputString);
+            if (opts.Verbose) Console.WriteLine(outputString);
+
             File.WriteAllText(opts.ActualOutput, outputString);
         }
     }
