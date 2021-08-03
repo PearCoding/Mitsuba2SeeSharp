@@ -8,10 +8,7 @@ namespace Mitsuba2SeeSharp {
         public static SeeMesh Map(SceneObject shape, ref LoadContext ctx) {
             SeeMesh mesh = new() { type = "ply" };
             if (shape.PluginType == "rectangle") {
-                bool flip_normals = false;
-                if (shape.Properties.ContainsKey("flip_normals")) {
-                    flip_normals = shape.Properties["flip_normals"].GetBool();
-                }
+                bool flip_normals = MapperUtils.GetBool(shape, "flip_normals", false);
 
                 Mesh actualMesh = PrimitiveLoader.CreateRectangle();
                 if (actualMesh == null)
@@ -41,10 +38,7 @@ namespace Mitsuba2SeeSharp {
                 File.WriteAllBytes(newpath, actualMesh.ToPly());
                 mesh.relativePath = MapperUtils.PathToUnix(MapperUtils.MakeItRelative(newpath, ctx.Options));
             } else if (shape.PluginType == "serialized") {
-                int shapeIndex = 0;
-                if (shape.Properties.ContainsKey("shape")) {
-                    shapeIndex = (int)shape.Properties["shape"].GetInteger();
-                }
+                int shapeIndex = MapperUtils.GetInteger(shape, "shape_index", 0);
 
                 string filename = MapperUtils.ExtractFilenameAbsolute(shape, ctx.Options);
                 Mesh actualMesh = SerializedLoader.ParseFile(filename, shapeIndex);
@@ -66,10 +60,7 @@ namespace Mitsuba2SeeSharp {
                 File.WriteAllBytes(newpath, actualMesh.ToPly());
                 mesh.relativePath = MapperUtils.PathToUnix(MapperUtils.MakeItRelative(newpath, ctx.Options));
             } else if (shape.PluginType == "obj") {
-                int shapeIndex = 0;
-                if (shape.Properties.ContainsKey("shape")) {
-                    shapeIndex = (int)shape.Properties["shape"].GetInteger();
-                }
+                int shapeIndex = MapperUtils.GetInteger(shape, "shape_index", 0);
 
                 string filename = MapperUtils.ExtractFilenameAbsolute(shape, ctx.Options);
                 Mesh actualMesh = ObjLoader.ParseFile(filename, shapeIndex);

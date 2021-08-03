@@ -57,6 +57,22 @@ namespace Mitsuba2SeeSharp {
             return def;
         }
 
+        internal static bool GetBool(SceneObject obj, string key, bool def) {
+            if (obj.Properties.ContainsKey(key)) {
+                return obj.Properties[key].GetBool(def);
+            }
+
+            return def;
+        }
+
+        internal static int GetInteger(SceneObject obj, string key, int def) {
+            if (obj.Properties.ContainsKey(key)) {
+                return (int)obj.Properties[key].GetInteger(def);
+            }
+
+            return def;
+        }
+
         internal static float GetNumber(SceneObject obj, string key, float def) {
             if (obj.Properties.ContainsKey(key)) {
                 return (float)obj.Properties[key].GetNumber(def);
