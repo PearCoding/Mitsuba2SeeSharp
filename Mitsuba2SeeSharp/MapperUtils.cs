@@ -3,6 +3,7 @@ using System.Diagnostics;
 using System.IO;
 using TinyParserMitsuba;
 using System.Linq;
+using System.Numerics;
 
 namespace Mitsuba2SeeSharp {
     public static class MapperUtils {
@@ -43,6 +44,25 @@ namespace Mitsuba2SeeSharp {
                 Log.Error("Given color property has type " + prop.Type.ToString() + " which is currently not supported");
                 return null;
             }
+        }
+
+        internal static Vector3 GetVector(SceneObject obj, string key, Vector3 def) {
+            if (obj.Properties.ContainsKey(key)) {
+                if (obj.Properties[key].Type == PropertyType.Vector) {
+                    var arr = obj.Properties[key].GetVector();
+                    return new((float)arr[0], (float)arr[1], (float)arr[2]);
+                }
+            }
+
+            return def;
+        }
+
+        internal static float GetNumber(SceneObject obj, string key, float def) {
+            if (obj.Properties.ContainsKey(key)) {
+                return (float)obj.Properties[key].GetNumber(def);
+            }
+
+            return def;
         }
 
         public static string ExtractFilename(SceneObject obj, Options options, string key = "filename") {

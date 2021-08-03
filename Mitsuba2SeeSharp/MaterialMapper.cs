@@ -13,7 +13,8 @@ namespace Mitsuba2SeeSharp {
                 // Silently ignore
                 return Map(bsdf.AnonymousChildren[0], ref ctx, id);
             } else if (bsdf.PluginType == "bumpmap" || bsdf.PluginType == "normalmap"
-                    || bsdf.PluginType == "blendbsdf" || bsdf.PluginType == "mask") {
+                    || bsdf.PluginType == "blendbsdf" || bsdf.PluginType == "mixturebsdf"
+                    || bsdf.PluginType == "mask") {
                 foreach (var child in bsdf.AnonymousChildren) {
                     if (child.Type == ObjectType.Bsdf) {
                         var special_mat = HandleMaskSpecialCase(bsdf, child, ctx);
@@ -62,13 +63,22 @@ namespace Mitsuba2SeeSharp {
                 (mat.roughness, mat.anisotropic) = ExtractRoughness(bsdf, alpha_def);
                 mat.metallic = 1;
             } else if (bsdf.PluginType == "plastic" || bsdf.PluginType == "roughplastic") {
-                float alpha_def = bsdf.PluginType == "roughplastic" ? 0.5f : 0.5f;
+                float alpha_def = bsdf.PluginType == "roughplastic" ? 0.5f : 0.0f;
 
                 mat = new() { name = id, type = "generic" };
                 mat.baseColor = ExtractCT(bsdf, "diffuse_reflectance", ctx.Options);
                 mat.IOR = ExtractNumber(bsdf, "int_ior", 1.49f);
                 (mat.roughness, mat.anisotropic) = ExtractRoughness(bsdf, alpha_def);
                 mat.metallic = 0;
+            } else if (bsdf.PluginType == "phong") {
+
+                mat = new() { name = id, type = "generic" };
+                mat.baseColor = ExtractCT(bsdf, "diffuse_reflectance", ctx.Options);
+                mat.IOR = 1.49f;
+                mat.metallic = 0;
+
+                float exponent = ExtractNumber(bsdf, "exponent", 30);
+                mat.roughness = MathF.Exp(-exponent);// Only an approximation
             } else {
                 Log.Error("Currently no support for " + bsdf.PluginType + " bsdfs");
             }
@@ -165,8 +175,12 @@ namespace Mitsuba2SeeSharp {
             }
 
             switch (lookup.ToLower()) {
+                // Approximative, extracted from .spd files around 540nm
+                // Keep in mind these do not contain color information in our case
                 case "ag": return (0.129f, 3.250f);
+                case "al": return (1.150f, 6.550f);
                 case "au": return (0.402f, 2.540f);
+                case "cr": return (2.980f, 4.450f);
                 case "cu": return (1.040f, 2.583f);
                 case "none": return (0, 1);
                 default:
