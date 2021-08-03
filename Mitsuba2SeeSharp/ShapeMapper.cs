@@ -40,8 +40,11 @@ namespace Mitsuba2SeeSharp {
             } else if (shape.PluginType == "serialized") {
                 int shapeIndex = MapperUtils.GetInteger(shape, "shape_index", 0);
 
+                bool face_normals = MapperUtils.GetBool(shape, "face_normals", false);
+                MeshLoadingOptions options = new() { IgnoreNormals = face_normals };
+
                 string filename = MapperUtils.ExtractFilenameAbsolute(shape, ctx.Options);
-                Mesh actualMesh = SerializedLoader.ParseFile(filename, shapeIndex);
+                Mesh actualMesh = SerializedLoader.ParseFile(filename, options, shapeIndex);
                 if (actualMesh == null)
                     return null;
 
@@ -54,7 +57,7 @@ namespace Mitsuba2SeeSharp {
                     return null;
                 }
 
-                actualMesh.FlipTexUp();
+                if (face_normals) actualMesh.ComputeFaceNormals();
 
                 string newpath = ctx.RequestPlyPath(filename, ctx.Options);
                 File.WriteAllBytes(newpath, actualMesh.ToPly());
@@ -62,8 +65,12 @@ namespace Mitsuba2SeeSharp {
             } else if (shape.PluginType == "obj") {
                 int shapeIndex = MapperUtils.GetInteger(shape, "shape_index", 0);
 
+                bool flip_tex_coords = MapperUtils.GetBool(shape, "flip_tex_coords", true);
+                bool face_normals = MapperUtils.GetBool(shape, "face_normals", false);
+                MeshLoadingOptions options = new() { IgnoreNormals = face_normals };
+
                 string filename = MapperUtils.ExtractFilenameAbsolute(shape, ctx.Options);
-                Mesh actualMesh = ObjLoader.ParseFile(filename, shapeIndex);
+                Mesh actualMesh = ObjLoader.ParseFile(filename, options, shapeIndex);
                 if (actualMesh == null)
                     return null;
 
@@ -76,7 +83,9 @@ namespace Mitsuba2SeeSharp {
                     return null;
                 }
 
-                actualMesh.FlipTexUp();
+                if (flip_tex_coords) actualMesh.FlipTexUp();
+
+                if (face_normals) actualMesh.ComputeFaceNormals();
 
                 string newpath = ctx.RequestPlyPath(filename, ctx.Options);
                 File.WriteAllBytes(newpath, actualMesh.ToPly());
@@ -84,9 +93,12 @@ namespace Mitsuba2SeeSharp {
             } else if (shape.PluginType == "ply") {
                 SeeTransform transform = MapperUtils.ExtractTransform(shape, ctx.Options);
 
-                if (transform != null && !transform.IsIdentity) {
+                bool face_normals = MapperUtils.GetBool(shape, "face_normals", false);
+                MeshLoadingOptions options = new() { IgnoreNormals = face_normals };
+
+                if (face_normals || (transform != null && !transform.IsIdentity)) {
                     string filename = MapperUtils.ExtractFilenameAbsolute(shape, ctx.Options);
-                    Mesh actualMesh = PlyLoader.ParseFile(filename);
+                    Mesh actualMesh = PlyLoader.ParseFile(filename, options);
                     if (actualMesh == null)
                         return null;
 
@@ -96,7 +108,7 @@ namespace Mitsuba2SeeSharp {
                         return null;
                     }
 
-                    actualMesh.FlipTexUp();
+                    if (face_normals) actualMesh.ComputeFaceNormals();
 
                     string newpath = ctx.RequestPlyPath(filename, ctx.Options);
                     File.WriteAllBytes(newpath, actualMesh.ToPly());

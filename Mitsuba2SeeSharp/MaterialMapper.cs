@@ -30,10 +30,13 @@ namespace Mitsuba2SeeSharp {
                 }
 
                 Log.Error("Currently no support for " + bsdf.PluginType + " bsdfs");
-            } else if (bsdf.PluginType == "diffuse") {
+            } else if (bsdf.PluginType == "diffuse" || bsdf.PluginType == "roughdiffuse") {
                 mat = new() { name = id, type = "diffuse" };
                 mat.baseColor = ExtractCT(bsdf, "reflectance", ctx.Options);
-                mat.roughness = 1;
+                if (bsdf.PluginType == "roughdiffuse")
+                    (mat.roughness, mat.anisotropic) = ExtractRoughness(bsdf, 0.5f);
+                else
+                    mat.roughness = 1;
             } else if (bsdf.PluginType == "dielectric" || bsdf.PluginType == "thindielectric" || bsdf.PluginType == "roughdielectric") {
                 float alpha_def = bsdf.PluginType == "roughdielectric" ? 0.5f : 0.0f;
 

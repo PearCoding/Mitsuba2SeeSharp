@@ -32,8 +32,52 @@ namespace Mitsuba2SeeSharp {
         public void FlipTexUp() {
             for (int i = 0; i < TexCoords.Count; ++i) {
                 var tex = TexCoords[i];
-                tex.Y *= -1;
+                tex.Y = 1 - tex.Y;
                 TexCoords[i] = tex;
+            }
+        }
+
+        public void ComputeFaceNormals() {
+            // Make all vertices unique
+            List<Vector3> vertices = new(FaceCount * 3);
+            for (int f = 0; f < FaceCount; ++f) {
+                vertices.Add(Vertices[Indices[3 * f + 0]]);
+                vertices.Add(Vertices[Indices[3 * f + 1]]);
+                vertices.Add(Vertices[Indices[3 * f + 2]]);
+            }
+
+            // Use face normals for each vertex
+            List<Vector3> normals = new(FaceCount * 3);
+            for (int f = 0; f < FaceCount; ++f) {
+                Vector3 x0 = Vertices[Indices[3 * f + 0]];
+                Vector3 x1 = Vertices[Indices[3 * f + 1]];
+                Vector3 x2 = Vertices[Indices[3 * f + 2]];
+
+                Vector3 N = Vector3.Cross(x1 - x0, x2 - x0);
+                normals.Add(N);
+                normals.Add(N);
+                normals.Add(N);
+            }
+
+            Vertices = vertices;
+            Normals = normals;
+
+            // Copy texcoords if necessary
+            if (TexCoords.Count > 0) {
+                List<Vector2> texcoords = new(FaceCount * 3);
+                for (int f = 0; f < FaceCount; ++f) {
+                    texcoords.Add(TexCoords[Indices[3 * f + 0]]);
+                    texcoords.Add(TexCoords[Indices[3 * f + 1]]);
+                    texcoords.Add(TexCoords[Indices[3 * f + 2]]);
+                }
+                TexCoords = texcoords;
+            }
+
+            // Linearize index list
+            for (int f = 0; f < FaceCount; ++f) {
+                Indices[3 * f + 0] = 3 * f + 0;
+                Indices[3 * f + 1] = 3 * f + 1;
+                Indices[3 * f + 2] = 3 * f + 2;
             }
         }
 

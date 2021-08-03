@@ -49,7 +49,7 @@ namespace Mitsuba2SeeSharp {
         /// <summary>
         /// Loads .obj file
         /// </summary>
-        public static Mesh ParseFile(string filename, int shape = 0) {
+        public static Mesh ParseFile(string filename, MeshLoadingOptions options, int shape = 0) {
             ObjLoaderFactory objLoaderFactory = new ObjLoaderFactory();
             IObjLoader objLoader = objLoaderFactory.Create(new MaterialNullStreamProvider());
             using FileStream file = File.OpenRead(filename);
@@ -62,8 +62,8 @@ namespace Mitsuba2SeeSharp {
 
             Group group = result.Groups[shape];
 
-            bool hasNormals = result.Normals.Count != 0;
-            bool hasTexcoords = result.Textures.Count != 0;
+            bool hasNormals = !options.IgnoreNormals && result.Normals.Count != 0;
+            bool hasTexcoords = !options.IgnoreTexCoords && result.Textures.Count != 0;
 
             // Linearize index
             Dictionary<Index, int> mapper = new();

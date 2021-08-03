@@ -6,6 +6,12 @@ using System.Numerics;
 using System.Text;
 
 namespace Mitsuba2SeeSharp {
+
+    public class MeshLoadingOptions {
+        public bool IgnoreNormals { get; set; } = false;
+        public bool IgnoreTexCoords { get; set; } = false;
+    }
+
     /// <summary>
     /// Simple class allowing to mix ascii text and binary data reading
     /// </summary>
@@ -61,10 +67,10 @@ namespace Mitsuba2SeeSharp {
         /// </summary>
         /// <param name="filename"></param>
         /// <returns>List of errors (and warnings)</returns>
-        public static Mesh ParseFile(string filename) {
+        public static Mesh ParseFile(string filename, MeshLoadingOptions options) {
             // Parse the .ply itself
-            using (MixReader file = new MixReader(filename, Encoding.ASCII))
-                return ParsePlyFile(file);
+            using MixReader file = new(filename, Encoding.ASCII);
+            return ParsePlyFile(file, options);
         }
 
         /// <summary>
@@ -360,7 +366,7 @@ namespace Mitsuba2SeeSharp {
         /// <summary>
         /// Will parse the whole file, starting with the header and following up with the data region
         /// </summary>
-        private static Mesh ParsePlyFile(MixReader stream) {
+        private static Mesh ParsePlyFile(MixReader stream, MeshLoadingOptions options) {
             PlyHeader header = ParsePlyHeader(stream);
             if (header == null) return null;
 
@@ -378,18 +384,22 @@ namespace Mitsuba2SeeSharp {
             }
 
             Mesh mesh = new();
+
+            bool useNormals = !options.IgnoreNormals && header.HasNormals;
+            bool useTexCoords = !options.IgnoreTexCoords && header.HasUVs;
+
             // Reserve memory
             mesh.Vertices.Capacity = header.VertexCount;
-            if (header.HasNormals) mesh.Normals.Capacity = header.VertexCount;
-            if (header.HasUVs) mesh.TexCoords.Capacity = header.VertexCount;
+            if (useNormals) mesh.Normals.Capacity = header.VertexCount;
+            if (useTexCoords) mesh.TexCoords.Capacity = header.VertexCount;
 
             // Read per vertex stuff
             for (int i = 0; i < header.VertexCount; ++i) {
                 (Vector3 vertex, Vector3 normal, Vector2 tex) = reader.ReadPerVertexLine();
 
                 mesh.Vertices.Add(vertex);
-                if (header.HasNormals) mesh.Normals.Add(normal);
-                if (header.HasUVs) mesh.TexCoords.Add(tex);
+                if (useNormals) mesh.Normals.Add(normal);
+                if (useTexCoords) mesh.TexCoords.Add(tex);
             }
 
             // Read per face indices
