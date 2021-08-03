@@ -9,7 +9,7 @@ namespace Mitsuba2SeeSharp.Tests {
 
         [Test]
         public void Load() {
-            Mesh mesh = ObjLoader.ParseFile(Path.Join(TestContext.CurrentContext.TestDirectory, "data", "cbox_smallbox.obj"));
+            Mesh mesh = ObjLoader.ParseFile(Path.Join(TestContext.CurrentContext.TestDirectory, "data", "cbox_smallbox.obj"), new());
             Assert.NotNull(mesh);
             Assert.AreEqual(24, mesh.Vertices.Count);
             Assert.AreEqual(12, mesh.FaceCount);

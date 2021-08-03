@@ -18,7 +18,7 @@ namespace Mitsuba2SeeSharp.Tests {
 
         [Test]
         public void Load() {
-            Mesh mesh = PlyLoader.ParseFile("test.ply");
+            Mesh mesh = PlyLoader.ParseFile("test.ply", new());
             Assert.NotNull(mesh);
             Assert.AreEqual(4, mesh.Vertices.Count);
             Assert.AreEqual(2, mesh.FaceCount);
