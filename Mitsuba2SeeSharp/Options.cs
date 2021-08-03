@@ -12,5 +12,10 @@ namespace Mitsuba2SeeSharp {
 
 
         public string ActualOutput => Output ?? System.IO.Path.ChangeExtension(Input, ".json");
-    };
+
+        [Option("keep-unused-materials",
+            HelpText = "Do not omit unused materials",
+            Default = false)]
+        public bool KeepUnusedMaterials { get; set; }
+    }
 }

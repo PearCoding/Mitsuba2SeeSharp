@@ -111,15 +111,16 @@ namespace Mitsuba2SeeSharp {
             foreach (SceneObject child in shape.AnonymousChildren) {
                 if (child.Type == ObjectType.Bsdf) {
                     string id = child.ID;
-                    if (id == "" || !ctx.MaterialNames.Contains(id)) {
+                    if (id == "" || !ctx.MaterialRefs.ContainsKey(id)) {
                         SeeMaterial mat = MaterialMapper.Map(child, ref ctx);
                         if (mat != null) {
                             ctx.Scene.materials.Add(mat);
-                            ctx.MaterialNames.Add(mat.name);
+                            ctx.MaterialRefs.Add(mat.name, 1);
                             mesh.material = mat.name;
                         }
                     } else {
                         mesh.material = child.ID;
+                        ctx.MaterialRefs[mesh.material] += 1;
                     }
                     break;
                 }

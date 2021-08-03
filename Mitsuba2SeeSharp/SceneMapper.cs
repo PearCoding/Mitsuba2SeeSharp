@@ -1,12 +1,13 @@
 ﻿using System.Collections.Generic;
 using System.IO;
 using TinyParserMitsuba;
+using System.Linq;
 
 namespace Mitsuba2SeeSharp {
     public class LoadContext {
         public Options Options;
         public SeeScene Scene = new();
-        public HashSet<string> MaterialNames = new();
+        public Dictionary<string, int> MaterialRefs = new(); // Reference counting
     }
 
     public static class SceneMapper {
@@ -35,6 +36,13 @@ namespace Mitsuba2SeeSharp {
                     default:
                         Log.Warning("No support for " + child.Type.ToString() + " in root");
                         break;
+                }
+            }
+
+            if (!options.KeepUnusedMaterials) {
+                // Remove non-referenced materials
+                foreach (var pair in ctx.MaterialRefs.Where(p => p.Value == 0)) {
+                    ctx.Scene.materials.RemoveAll(m => m.name == pair.Key);
                 }
             }
 
@@ -75,7 +83,7 @@ namespace Mitsuba2SeeSharp {
             SeeMaterial mat = MaterialMapper.Map(bsdf, ref ctx);
             if (mat != null) {
                 ctx.Scene.materials.Add(mat);
-                ctx.MaterialNames.Add(mat.name);
+                ctx.MaterialRefs.Add(mat.name, 0);
             }
         }
 
