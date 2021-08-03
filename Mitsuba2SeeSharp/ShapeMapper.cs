@@ -22,7 +22,7 @@ namespace Mitsuba2SeeSharp {
                 if (flip_normals)
                     actualMesh.FlipNormals();
 
-                string newpath = MapperUtils.CreatePlyPath($"__rectangle_{ctx.Scene.objects.Count}.ply", ctx.Options);
+                string newpath = ctx.RequestPlyPath($"__rectangle_{ctx.Scene.objects.Count}.ply", ctx.Options);
                 File.WriteAllBytes(newpath, actualMesh.ToPly());
                 mesh.relativePath = MapperUtils.PathToUnix(MapperUtils.MakeItRelative(newpath, ctx.Options));
             } else if (shape.PluginType == "serialized") {
@@ -47,7 +47,7 @@ namespace Mitsuba2SeeSharp {
 
                 actualMesh.FlipTexUp();
 
-                string newpath = MapperUtils.CreatePlyPath(filename, ctx.Options);
+                string newpath = ctx.RequestPlyPath(filename, ctx.Options);
                 File.WriteAllBytes(newpath, actualMesh.ToPly());
                 mesh.relativePath = MapperUtils.PathToUnix(MapperUtils.MakeItRelative(newpath, ctx.Options));
             } else if (shape.PluginType == "obj") {
@@ -72,7 +72,7 @@ namespace Mitsuba2SeeSharp {
 
                 actualMesh.FlipTexUp();
 
-                string newpath = MapperUtils.CreatePlyPath(filename, ctx.Options);
+                string newpath = ctx.RequestPlyPath(filename, ctx.Options);
                 File.WriteAllBytes(newpath, actualMesh.ToPly());
                 mesh.relativePath = MapperUtils.PathToUnix(MapperUtils.MakeItRelative(newpath, ctx.Options));
             } else if (shape.PluginType == "ply") {
@@ -92,7 +92,7 @@ namespace Mitsuba2SeeSharp {
 
                     actualMesh.FlipTexUp();
 
-                    string newpath = MapperUtils.CreatePlyPath(filename, ctx.Options);
+                    string newpath = ctx.RequestPlyPath(filename, ctx.Options);
                     File.WriteAllBytes(newpath, actualMesh.ToPly());
                     mesh.relativePath = MapperUtils.PathToUnix(MapperUtils.MakeItRelative(newpath, ctx.Options));
                 } else {
@@ -100,7 +100,7 @@ namespace Mitsuba2SeeSharp {
                     mesh.relativePath = MapperUtils.PathToUnix(MapperUtils.ExtractFilename(shape, ctx.Options));
                 }
             } else {
-                Log.Error("Currently no support for " + shape.PluginType + " type of shapes");
+                Log.Error("Currently no support for " + shape.PluginType + " shapes");
             }
 
             // Had errors, give up

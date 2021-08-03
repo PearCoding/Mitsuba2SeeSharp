@@ -1,4 +1,5 @@
 ﻿using CommandLine;
+using System;
 
 namespace Mitsuba2SeeSharp {
     public class Options {
@@ -17,5 +18,6 @@ namespace Mitsuba2SeeSharp {
             HelpText = "Do not omit unused materials",
             Default = false)]
         public bool KeepUnusedMaterials { get; set; }
+        public string MeshDirectory { get; set; } = "meshes";
     }
 }

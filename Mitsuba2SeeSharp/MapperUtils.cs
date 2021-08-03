@@ -45,18 +45,6 @@ namespace Mitsuba2SeeSharp {
             }
         }
 
-        // Create filename from given path to a file and the output
-        // The file will be absolute
-        public static string CreatePlyPath(string path, Options options) {
-            string name = Path.GetFileName(path);
-            string directory = Path.GetDirectoryName(options.ActualOutput);
-            string meshdir = Path.Join(directory, "meshes");
-
-            Directory.CreateDirectory(meshdir);
-
-            return Path.Join(meshdir, Path.ChangeExtension(name, ".ply"));
-        }
-
         public static string ExtractFilename(SceneObject obj, Options options, string key = "filename") {
             if (obj.Properties.ContainsKey("filename"))
                 return MakeItRelative(obj.Properties["filename"].GetString(), options);

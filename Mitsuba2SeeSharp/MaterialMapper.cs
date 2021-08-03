@@ -1,5 +1,6 @@
 ﻿using TinyParserMitsuba;
 using System;
+using System.Linq;
 
 namespace Mitsuba2SeeSharp {
     public static class MaterialMapper {
@@ -15,18 +16,25 @@ namespace Mitsuba2SeeSharp {
                     || bsdf.PluginType == "blendbsdf" || bsdf.PluginType == "mask") {
                 foreach (var child in bsdf.AnonymousChildren) {
                     if (child.Type == ObjectType.Bsdf) {
-                        Log.Warning("Currently no support for " + bsdf.PluginType + " type of bsdfs. Using first inner bsdf instead");
-                        return Map(child, ref ctx, id);
+                        var special_mat = HandleMaskSpecialCase(bsdf, child, ctx);
+                        if (special_mat != null) {
+                            mat = special_mat;
+                            mat.name = id;
+                            return mat;
+                        } else {
+                            Log.Warning("Currently no support for " + bsdf.PluginType + " bsdfs. Using first inner bsdf instead");
+                            return Map(child, ref ctx, id);
+                        }
                     }
                 }
 
-                Log.Error("Currently no support for " + bsdf.PluginType + " type of bsdfs");
+                Log.Error("Currently no support for " + bsdf.PluginType + " bsdfs");
             } else if (bsdf.PluginType == "diffuse") {
                 mat = new() { name = id, type = "diffuse" };
                 mat.baseColor = ExtractCT(bsdf, "reflectance", ctx.Options);
                 mat.roughness = 1;
             } else if (bsdf.PluginType == "dielectric" || bsdf.PluginType == "thindielectric" || bsdf.PluginType == "roughdielectric") {
-                float alpha_def = bsdf.PluginType == "roughdielectric" ? 0.5f : 0.5f;
+                float alpha_def = bsdf.PluginType == "roughdielectric" ? 0.5f : 0.0f;
 
                 mat = new() { name = id, type = "generic" };
                 mat.baseColor = SeeColorOrTexture.White;
@@ -39,10 +47,10 @@ namespace Mitsuba2SeeSharp {
 
                 mat.thin = bsdf.PluginType == "thindielectric";
             } else if (bsdf.PluginType == "conductor" || bsdf.PluginType == "roughconductor") {
-                float alpha_def = bsdf.PluginType == "roughconductor" ? 0.5f : 0.5f;
+                float alpha_def = bsdf.PluginType == "roughconductor" ? 0.5f : 0.0f;
 
                 mat = new() { name = id, type = "generic" };
-                mat.baseColor = ExtractCT(bsdf, "specular_reflectance", ctx.Options);
+                mat.baseColor = ExtractCT(bsdf, "specular_reflectance", ctx.Options, 1);
 
                 if (bsdf.Properties.ContainsKey("material")) {
                     // TODO: No support for kappa?
@@ -62,37 +70,34 @@ namespace Mitsuba2SeeSharp {
                 (mat.roughness, mat.anisotropic) = ExtractRoughness(bsdf, alpha_def);
                 mat.metallic = 0;
             } else {
-                Log.Error("Currently no support for " + bsdf.PluginType + " type of bsdfs");
+                Log.Error("Currently no support for " + bsdf.PluginType + " bsdfs");
             }
 
             return mat;
         }
 
-        private static SeeColorOrTexture ExtractCT(SceneObject obj, string key, Options options) {
+        private static SeeColorOrTexture ExtractCT(SceneObject obj, string key, Options options, float def = 0) {
             SeeColorOrTexture ct = new();
             if (obj.Properties.ContainsKey(key)) {
                 ct.type = "rgb";
 
                 Property prop = obj.Properties[key];
                 ct.value = MapperUtils.ExtractColor(prop);
-                if (ct.value == null)
-                    return null;
-            } else if (obj.NamedChildren.ContainsKey(key))// Texture
-              {
-                ct.type = "image";
+                if (ct.value != null)
+                    return ct;
+            } else if (obj.NamedChildren.ContainsKey(key)) {
+                ct.type = "image";// Texture
 
                 SceneObject tex = obj.NamedChildren[key];
                 string filename = ExtractTexture(tex);
-                if (filename == null || filename == "")
-                    return null;
-
-                ct.filename = MapperUtils.MakeItRelative(filename, options);
-            } else {
-                Log.Error("Invalid color property given");
-                ct.type = "rgb";
-                ct.value = new() { x = 0, y = 0, z = 0 };
+                if (filename != null && filename != "") {
+                    ct.filename = MapperUtils.MakeItRelative(filename, options);
+                    return ct;
+                }
             }
 
+            ct.type = "rgb";
+            ct.value = new() { x = def, y = def, z = def };
             return ct;
         }
 
@@ -199,6 +204,37 @@ namespace Mitsuba2SeeSharp {
             mat.baseColor = SeeColorOrTexture.Black;
             mat.roughness = 1;
             return mat;
+        }
+
+        public static SeeMaterial HandleMaskSpecialCase(SceneObject parent, SceneObject child, LoadContext ctx) {
+            if (parent.PluginType == "mask") {
+                if (child.PluginType == "diffuse") {
+                    SeeMaterial mat = new() { type = "generic" };
+                    mat.baseColor = ExtractCT(child, "reflectance", ctx.Options);
+                    mat.roughness = 1;
+                    mat.thin = true;
+                    mat.IOR = 1.001f; // SeeSharp does not allow IOR to be 1
+                    if (parent.Properties.ContainsKey("opacity")) {
+                        var prop = parent.Properties["opacity"];
+                        if (prop.Type == PropertyType.Number)
+                            mat.specularTransmittance = (float)prop.GetNumber();
+                        else if (prop.Type == PropertyType.Color)
+                            mat.specularTransmittance = (float)prop.GetColor().Average();
+                        // TODO: Spectral?
+                        else
+                            return null;// Got texture, give up
+                    } else {
+                        mat.specularTransmittance = 0.5f;
+                    }
+
+                    return mat;
+                } else if (child.PluginType == "twosided") {
+                    // Skip twosided
+                    return HandleMaskSpecialCase(parent, child.AnonymousChildren[0], ctx);
+                }
+            }
+
+            return null;
         }
     }
 }

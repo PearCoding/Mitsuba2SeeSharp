@@ -1,14 +1,8 @@
-﻿using System.Collections.Generic;
-using System.IO;
+﻿using System.IO;
 using TinyParserMitsuba;
 using System.Linq;
 
 namespace Mitsuba2SeeSharp {
-    public class LoadContext {
-        public Options Options;
-        public SeeScene Scene = new();
-        public Dictionary<string, int> MaterialRefs = new(); // Reference counting
-    }
 
     public static class SceneMapper {
         public static SeeScene Map(Scene scene, Options options) {
@@ -16,27 +10,11 @@ namespace Mitsuba2SeeSharp {
             ctx.Scene.name = string.Format("{0}_{1}_{2}_{3}", Path.GetFileNameWithoutExtension(options.Input), scene.MajorVersion, scene.MinorVersion, scene.PatchVersion);
 
             foreach (SceneObject child in scene.AnonymousChildren) {
-                switch (child.Type) {
-                    case ObjectType.Sensor:
-                        HandleSensor(ref ctx, child);
-                        break;
-                    case ObjectType.Bsdf:
-                        HandleBsdf(ref ctx, child);
-                        break;
-                    case ObjectType.Shape:
-                        HandleShape(ref ctx, child);
-                        break;
-                    case ObjectType.Emitter:
-                        EmitterMapper.Setup(child, ref ctx);// Only care about envmap
-                        break;
-                    case ObjectType.Texture:
-                    case ObjectType.Integrator:
-                        // Silently ignore
-                        break;
-                    default:
-                        Log.Warning("No support for " + child.Type.ToString() + " in root");
-                        break;
-                }
+                HandleRootElement(ref ctx, child);
+            }
+
+            foreach (var pair in scene.NamedChildren) {
+                HandleRootElement(ref ctx, pair.Value);
             }
 
             if (!options.KeepUnusedMaterials) {
@@ -47,6 +25,30 @@ namespace Mitsuba2SeeSharp {
             }
 
             return ctx.Scene;
+        }
+
+        private static void HandleRootElement(ref LoadContext ctx, SceneObject child) {
+            switch (child.Type) {
+                case ObjectType.Sensor:
+                    HandleSensor(ref ctx, child);
+                    break;
+                case ObjectType.Bsdf:
+                    HandleBsdf(ref ctx, child);
+                    break;
+                case ObjectType.Shape:
+                    HandleShape(ref ctx, child);
+                    break;
+                case ObjectType.Emitter:
+                    EmitterMapper.Setup(child, ref ctx);// Only care about envmap
+                    break;
+                case ObjectType.Texture:
+                case ObjectType.Integrator:
+                    // Silently ignore
+                    break;
+                default:
+                    Log.Warning("No support for " + child.Type.ToString() + " in root");
+                    break;
+            }
         }
 
         private static void HandleSensor(ref LoadContext ctx, SceneObject sensor) {

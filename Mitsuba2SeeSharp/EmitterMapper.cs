@@ -12,7 +12,7 @@ namespace Mitsuba2SeeSharp {
                 string filename = MapperUtils.ExtractFilename(emitter, ctx.Options);
                 ctx.Scene.background = new() { type = "image", filename = filename };
             } else {
-                Log.Error("Currently no support for " + emitter.PluginType + " type of shapes");
+                Log.Error("Currently no support for " + emitter.PluginType + " emitters");
             }
         }
     }
