@@ -81,40 +81,18 @@ namespace Mitsuba2SeeSharp {
             return def;
         }
 
-        public static string ExtractFilename(SceneObject obj, Options options, string key = "filename") {
+        public static string ExtractFilename(SceneObject obj, LoadContext ctx, string key = "filename") {
             if (obj.Properties.ContainsKey("filename"))
-                return MakeItRelative(obj.Properties["filename"].GetString(), options);
+                return ctx.MakeItRelative(obj.Properties["filename"].GetString());
             else
                 return null;
         }
 
-        public static string ExtractFilenameAbsolute(SceneObject obj, Options options, string key = "filename") {
+        public static string ExtractFilenameAbsolute(SceneObject obj, LoadContext ctx, string key = "filename") {
             if (obj.Properties.ContainsKey("filename"))
-                return MakeItAbsolute(obj.Properties["filename"].GetString(), options);
+                return ctx.MakeItAbsolute(obj.Properties["filename"].GetString());
             else
                 return null;
-        }
-
-        public static string MakeItRelative(string path, Options options) {
-            if (!Path.IsPathRooted(path))
-                return path;
-
-            string directory = Path.GetDirectoryName(options.ActualOutput);
-            if (directory == null || directory == "")
-                return path;
-            return Path.GetRelativePath(directory, path);
-        }
-
-        public static string MakeItAbsolute(string path, Options options) {
-            if (Path.IsPathRooted(path))
-                return path;
-
-            string directory = Path.GetDirectoryName(options.ActualOutput);
-            return Path.Join(directory, path);
-        }
-
-        public static string PathToUnix(string path) {
-            return path.Replace("\\", "/");
         }
     }
 }

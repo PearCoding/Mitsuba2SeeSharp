@@ -32,7 +32,7 @@ namespace Mitsuba2SeeSharp {
                 Log.Error("Currently no support for " + bsdf.PluginType + " bsdfs");
             } else if (bsdf.PluginType == "diffuse" || bsdf.PluginType == "roughdiffuse") {
                 mat = new() { name = id, type = "diffuse" };
-                mat.baseColor = ExtractCT(bsdf, "reflectance", ctx.Options);
+                mat.baseColor = ExtractCT(bsdf, "reflectance", ctx);
                 if (bsdf.PluginType == "roughdiffuse")
                     (mat.roughness, mat.anisotropic) = ExtractRoughness(bsdf, 0.5f);
                 else
@@ -47,19 +47,21 @@ namespace Mitsuba2SeeSharp {
                 (mat.roughness, mat.anisotropic) = ExtractRoughness(bsdf, alpha_def);
 
                 mat.specularTint = 1;
-                mat.specularTransmittance = ExtractNumber(bsdf, "specular_transmittance", 1.0f);
+                mat.specularTransmittance = MapperUtils.GetNumber(bsdf, "specular_transmittance", 1.0f);
 
                 mat.thin = bsdf.PluginType == "thindielectric";
             } else if (bsdf.PluginType == "conductor" || bsdf.PluginType == "roughconductor") {
                 float alpha_def = bsdf.PluginType == "roughconductor" ? 0.5f : 0.0f;
 
                 mat = new() { name = id, type = "generic" };
-                mat.baseColor = ExtractCT(bsdf, "specular_reflectance", ctx.Options, 1);
+                mat.baseColor = ExtractCT(bsdf, "specular_reflectance", ctx, 1);
 
                 if (bsdf.Properties.ContainsKey("material")) {
                     // TODO: No support for kappa?
                     (float eta, _) = ExtractConductor(bsdf, "material");
                     mat.IOR = eta;
+                    // The following case might happen due the none material
+                    if (mat.IOR == 0) mat.IOR = 1.00001f;
                 } else {
                     mat.IOR = ExtractIOR(bsdf, "eta", 4.9f);// TODO: Not really the same as IOR
                 }
@@ -69,18 +71,18 @@ namespace Mitsuba2SeeSharp {
                 float alpha_def = bsdf.PluginType == "roughplastic" ? 0.5f : 0.0f;
 
                 mat = new() { name = id, type = "generic" };
-                mat.baseColor = ExtractCT(bsdf, "diffuse_reflectance", ctx.Options);
-                mat.IOR = ExtractNumber(bsdf, "int_ior", 1.49f);
+                mat.baseColor = ExtractCT(bsdf, "diffuse_reflectance", ctx);
+                mat.IOR = MapperUtils.GetNumber(bsdf, "int_ior", 1.49f);
                 (mat.roughness, mat.anisotropic) = ExtractRoughness(bsdf, alpha_def);
                 mat.metallic = 0;
             } else if (bsdf.PluginType == "phong") {
 
                 mat = new() { name = id, type = "generic" };
-                mat.baseColor = ExtractCT(bsdf, "diffuse_reflectance", ctx.Options);
+                mat.baseColor = ExtractCT(bsdf, "diffuse_reflectance", ctx);
                 mat.IOR = 1.49f;
                 mat.metallic = 0;
 
-                float exponent = ExtractNumber(bsdf, "exponent", 30);
+                float exponent = MapperUtils.GetNumber(bsdf, "exponent", 30);
                 mat.roughness = MathF.Exp(-exponent);// Only an approximation
             } else {
                 Log.Error("Currently no support for " + bsdf.PluginType + " bsdfs");
@@ -89,7 +91,7 @@ namespace Mitsuba2SeeSharp {
             return mat;
         }
 
-        private static SeeColorOrTexture ExtractCT(SceneObject obj, string key, Options options, float def = 0) {
+        private static SeeColorOrTexture ExtractCT(SceneObject obj, string key, LoadContext ctx, float def = 0) {
             SeeColorOrTexture ct = new();
             if (obj.Properties.ContainsKey(key)) {
                 ct.type = "rgb";
@@ -104,7 +106,10 @@ namespace Mitsuba2SeeSharp {
                 SceneObject tex = obj.NamedChildren[key];
                 string filename = ExtractTexture(tex);
                 if (filename != null && filename != "") {
-                    ct.filename = MapperUtils.MakeItRelative(filename, options);
+                    if (ctx.Options.CopyImages)
+                        ct.filename = ctx.CopyImage(ctx.MakeItAbsolute(filename));
+                    else
+                        ct.filename = ctx.PrepareFilename(filename);
                     return ct;
                 }
             }
@@ -194,11 +199,11 @@ namespace Mitsuba2SeeSharp {
 
         private static (float, float) ExtractRoughness(SceneObject obj, float def) {
             if (obj.Properties.ContainsKey("alpha")) {
-                float roughness = MathF.Sqrt((float)ExtractNumber(obj, "alpha", def));
+                float roughness = MathF.Sqrt(MapperUtils.GetNumber(obj, "alpha", def));
                 return (roughness, 0);
             } else {
-                float roughness_x = MathF.Sqrt((float)ExtractNumber(obj, "alpha_u", def));
-                float roughness_y = MathF.Sqrt((float)ExtractNumber(obj, "alpha_v", roughness_x * roughness_x));
+                float roughness_x = MathF.Sqrt(MapperUtils.GetNumber(obj, "alpha_u", def));
+                float roughness_y = MathF.Sqrt(MapperUtils.GetNumber(obj, "alpha_v", roughness_x * roughness_x));
 
                 if (roughness_x == 0 && roughness_y == 0)
                     return (0, 0);
@@ -206,14 +211,6 @@ namespace Mitsuba2SeeSharp {
                 float anisotropy = MathF.Abs(roughness_x - roughness_y) / MathF.Max(roughness_x, roughness_y);
                 return (MathF.Max(roughness_x, roughness_y), anisotropy);
             }
-        }
-
-        private static float ExtractNumber(SceneObject obj, string key, float def) {
-            if (obj.Properties.ContainsKey(key)) {
-                Property prop = obj.Properties[key];
-                return (float)prop.GetNumber(def);
-            }
-            return def;
         }
 
         public static SeeMaterial CreateBlack(string id) {
@@ -227,7 +224,7 @@ namespace Mitsuba2SeeSharp {
             if (parent.PluginType == "mask") {
                 if (child.PluginType == "diffuse") {
                     SeeMaterial mat = new() { type = "generic" };
-                    mat.baseColor = ExtractCT(child, "reflectance", ctx.Options);
+                    mat.baseColor = ExtractCT(child, "reflectance", ctx);
                     mat.roughness = 1;
                     mat.thin = true;
                     mat.IOR = 1.001f; // SeeSharp does not allow IOR to be 1

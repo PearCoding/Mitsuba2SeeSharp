@@ -5,7 +5,7 @@ namespace Mitsuba2SeeSharp.Tests {
     public class PlyLoaderTests {
         [SetUp]
         public void Setup() {
-            Mesh mesh = new Mesh();
+            Mesh mesh = new();
             mesh.Vertices.Add(new(0, 0, 0));
             mesh.Vertices.Add(new(0, 1, 0));
             mesh.Vertices.Add(new(0, 0, 1));
