@@ -1,6 +1,7 @@
-﻿using System.IO;
-using TinyParserMitsuba;
+﻿using System;
+using System.IO;
 using System.Linq;
+using TinyParserMitsuba;
 
 namespace Mitsuba2SeeSharp {
 
@@ -13,13 +14,13 @@ namespace Mitsuba2SeeSharp {
                 HandleRootElement(ref ctx, child);
             }
 
-            foreach (var pair in scene.NamedChildren) {
+            foreach (System.Collections.Generic.KeyValuePair<string, SceneObject> pair in scene.NamedChildren) {
                 HandleRootElement(ref ctx, pair.Value);
             }
 
             if (!options.KeepUnusedMaterials) {
                 // Remove non-referenced materials
-                foreach (var pair in ctx.MaterialRefs.Where(p => p.Value == 0)) {
+                foreach (System.Collections.Generic.KeyValuePair<string, int> pair in ctx.MaterialRefs.Where(p => p.Value == 0)) {
                     ctx.Scene.materials.RemoveAll(m => m.name == pair.Key);
                 }
             }
@@ -70,13 +71,32 @@ namespace Mitsuba2SeeSharp {
             seeCamera.transform = "__camera" + suffix;
             seeCamera.type = sensor.PluginType;
 
-            sensor.Properties.TryGetValue("fov", out Property fovProperty);
-            if (fovProperty != null && fovProperty.Type == PropertyType.Number) {
-                seeCamera.fov = (float)fovProperty.GetNumber();
-            } else {
-                Log.Warning("Camera missing fov parameter. Setting it to 60");
-                seeCamera.fov = 60;
+            // Get fov information
+            seeCamera.fov = MapperUtils.GetNumber(sensor, "fov", 60);
+            string fovAxis = MapperUtils.GetString(sensor, "fov_axis", "x");
+
+            // Extract film info for further computations
+            int width = 1;
+            int height = 1;
+            foreach (SceneObject child in sensor.AnonymousChildren) {
+                if (child.Type == ObjectType.Film) {
+                    width = MapperUtils.GetInteger(child, "width", width);
+                    height = MapperUtils.GetInteger(child, "height", height);
+                }
             }
+
+            float aspectRatio = height / (float)width;
+
+            if (fovAxis == "smaller") fovAxis = width < height ? "x" : "y";
+            else if (fovAxis == "larger") fovAxis = width < height ? "y" : "x";
+
+            if (fovAxis == "x") {
+                // Map horizontal to vertical
+                float angle = seeCamera.fov * MathF.PI / 180;
+                angle = 2 * MathF.Atan(aspectRatio * MathF.Tan(angle / 2));
+                seeCamera.fov = angle * 180 / MathF.PI;
+            }
+            // TODO: diagonal?
 
             ctx.Scene.cameras.Add(seeCamera);
         }

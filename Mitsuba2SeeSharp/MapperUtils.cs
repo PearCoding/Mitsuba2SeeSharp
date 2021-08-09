@@ -81,6 +81,14 @@ namespace Mitsuba2SeeSharp {
             return def;
         }
 
+        internal static string GetString(SceneObject obj, string key, string def) {
+            if (obj.Properties.ContainsKey(key)) {
+                return obj.Properties[key].GetString(def);
+            }
+
+            return def;
+        }
+
         public static string ExtractFilename(SceneObject obj, LoadContext ctx, string key = "filename") {
             if (obj.Properties.ContainsKey("filename"))
                 return ctx.MakeItRelative(obj.Properties["filename"].GetString());
