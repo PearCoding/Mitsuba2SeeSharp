@@ -26,7 +26,7 @@ namespace Mitsuba2SeeSharp {
         public static SeeVector ExtractColor(Property prop, bool emissive = false) {
             if (prop.Type == PropertyType.Color) {
                 double[] val = prop.GetColor();
-                return new() { x = (float)val[0], y = (float)val[0], z = (float)val[0] };
+                return new() { x = (float)val[0], y = (float)val[1], z = (float)val[2] };
             } else if (prop.Type == PropertyType.Spectrum) {
                 var spectrum = prop.GetSpectrum();
                 if (spectrum.IsUniform) {
@@ -91,14 +91,14 @@ namespace Mitsuba2SeeSharp {
 
         public static string ExtractFilename(SceneObject obj, LoadContext ctx, string key = "filename") {
             if (obj.Properties.ContainsKey("filename"))
-                return ctx.MakeItRelative(obj.Properties["filename"].GetString());
+                return ctx.MakeItRelativeInput(obj.Properties["filename"].GetString());
             else
                 return null;
         }
 
         public static string ExtractFilenameAbsolute(SceneObject obj, LoadContext ctx, string key = "filename") {
             if (obj.Properties.ContainsKey("filename"))
-                return ctx.MakeItAbsolute(obj.Properties["filename"].GetString());
+                return ctx.MakeItAbsoluteInput(obj.Properties["filename"].GetString());
             else
                 return null;
         }

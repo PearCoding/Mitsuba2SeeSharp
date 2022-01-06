@@ -145,10 +145,10 @@ namespace Mitsuba2SeeSharp {
         // Generic only
         public float roughness { get; set; } = 0.5f;
         public float anisotropic { get; set; } = 0;
-        public float diffuseTransmittance { get; set; } = 1;
-        public float IOR { get; set; } = 1;
+        public float diffuseTransmittance { get; set; } = 0;
+        public float IOR { get; set; } = 1.45f;
         public float metallic { get; set; } = 0;
-        public float specularTint { get; set; } = 0;
+        public float specularTint { get; set; } = 1.0f;
         public float specularTransmittance { get; set; } = 0;
 
         public SeeMaterial Copy() {

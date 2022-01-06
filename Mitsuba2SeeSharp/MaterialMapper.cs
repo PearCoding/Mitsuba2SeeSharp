@@ -107,10 +107,12 @@ namespace Mitsuba2SeeSharp {
                 string filename = ExtractTexture(tex);
                 if (filename != null && filename != "") {
                     if (ctx.Options.CopyImages)
-                        ct.filename = ctx.CopyImage(ctx.MakeItAbsolute(filename));
+                        ct.filename = ctx.CopyImage(ctx.MakeItAbsoluteInput(filename));
                     else
                         ct.filename = ctx.PrepareFilename(filename);
                     return ct;
+                } else {
+                    Log.Error($"Could not get image path for property {key} of {obj.ID}");
                 }
             }
 

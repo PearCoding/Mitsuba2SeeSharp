@@ -11,13 +11,17 @@ namespace Mitsuba2SeeSharp {
         public List<string> MeshFiles = new();
         public List<string> ImageFiles = new();
 
+        public string InputDir => Path.GetDirectoryName(Options.Input);
+        public string OutputDir => Path.GetDirectoryName(Options.ActualOutput);
+
+
         /// <summary>
         /// Create filename from given path to a file and the output
         /// The file will be absolute
         /// </summary>
         public string RequestPlyPath(string path) {
             string name = Path.GetFileName(path);
-            string directory = Path.GetDirectoryName(Options.ActualOutput);
+            string directory = OutputDir;
             string meshdir = Path.Join(directory, Options.MeshDirectory);
 
             Directory.CreateDirectory(meshdir);
@@ -39,7 +43,7 @@ namespace Mitsuba2SeeSharp {
         /// </summary>
         public string RequestImagePath(string path) {
             string name = Path.GetFileName(path);
-            string directory = Path.GetDirectoryName(Options.ActualOutput);
+            string directory = OutputDir;
             string imgdir = Path.Join(directory, Options.ImageDirectory);
 
             Directory.CreateDirectory(imgdir);
@@ -55,22 +59,38 @@ namespace Mitsuba2SeeSharp {
             return newpath;
         }
 
-        public string MakeItRelative(string path) {
-            if (!Path.IsPathRooted(path))
-                return path;
-
-            string directory = Path.GetDirectoryName(Options.ActualOutput);
-            if (directory == null || directory == "")
-                return path;
-            return Path.GetRelativePath(directory, path);
+        public string MakeItRelative(string path, string base_path) {
+            // if (!Path.IsPathRooted(path))
+            //     return path;
+            return Path.GetRelativePath(base_path, path);
         }
 
-        public string MakeItAbsolute(string path) {
+        public string MakeItRelativeInput(string path) {
+            string directory = InputDir;
+            if (directory == null || directory == "")
+                return path;
+            return MakeItRelative(path, directory);
+        }
+
+        public string MakeItRelativeOutput(string path) {
+            string directory = OutputDir;
+            if (directory == null || directory == "")
+                return path;
+            return MakeItRelative(path, directory);
+        }
+
+        public string MakeItAbsolute(string path, string base_path) {
             if (Path.IsPathRooted(path))
                 return path;
+            return Path.Join(base_path, path);
+        }
 
-            string directory = Path.GetDirectoryName(Options.ActualOutput);
-            return Path.Join(directory, path);
+        public string MakeItAbsoluteInput(string path) {
+            return MakeItAbsolute(path, InputDir);
+        }
+
+        public string MakeItAbsoluteOutput(string path) {
+            return MakeItAbsolute(path, OutputDir);
         }
 
         public static string PathToUnix(string path) {
@@ -78,15 +98,26 @@ namespace Mitsuba2SeeSharp {
         }
 
         public string PrepareFilename(string path) {
-            return PathToUnix(MakeItRelative(path));
+            return PathToUnix(MakeItRelativeOutput(path));
         }
 
         public string CopyImage(string filename) {
-            var layers = ImageBase.LoadLayersFromFile(filename);
-            string filename2 = RequestImagePath(filename);
-            ImageBase.WriteLayeredExr(filename2, layers.Select(p => (p.Key, p.Value)).ToArray());
+            if (Path.GetExtension(filename) == ".exr") {
+                var layers = ImageBase.LoadLayersFromFile(filename);
+                if (layers.Count == 0) {
+                    Log.Error($"Could not load {filename}");
+                    return "";
+                }
 
-            return PrepareFilename(filename2);
+                string filename2 = RequestImagePath(filename);
+                ImageBase.WriteLayeredExr(filename2, layers.Select(p => (p.Key, p.Value)).ToArray());
+
+                return PrepareFilename(filename2);
+            } else {
+                string filename2 = RequestImagePath(filename);
+                File.Copy(filename, filename2, true);
+                return PrepareFilename(filename2);
+            }
         }
     }
 }
