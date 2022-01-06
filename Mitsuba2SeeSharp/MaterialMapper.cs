@@ -58,10 +58,12 @@ namespace Mitsuba2SeeSharp {
 
                 if (bsdf.Properties.ContainsKey("material")) {
                     // TODO: No support for kappa?
-                    (float eta, _) = ExtractConductor(bsdf, "material");
+                    (float eta, _, SeeVector rgb) = ExtractConductor(bsdf, "material");
                     mat.IOR = eta;
                     // The following case might happen due the none material
                     if (mat.IOR == 0) mat.IOR = 1.00001f;
+
+                    mat.baseColor = new() { type = "rgb", value = rgb };
                 } else {
                     mat.IOR = ExtractIOR(bsdf, "eta", 4.9f);// TODO: Not really the same as IOR
                 }
@@ -176,27 +178,14 @@ namespace Mitsuba2SeeSharp {
             return def;
         }
 
-        private static (float, float) ExtractConductor(SceneObject obj, string key, string def = "cu") {
+        private static (float, float, SeeVector) ExtractConductor(SceneObject obj, string key, string def = "cu") {
             string lookup = def;
             if (obj.Properties.ContainsKey(key)) {
                 Property prop = obj.Properties[key];
                 if (prop.Type == PropertyType.String)
                     lookup = prop.GetString();
             }
-
-            switch (lookup.ToLower()) {
-                // Approximative, extracted from .spd files around 540nm
-                // Keep in mind these do not contain color information in our case
-                case "ag": return (0.129f, 3.250f);
-                case "al": return (1.150f, 6.550f);
-                case "au": return (0.402f, 2.540f);
-                case "cr": return (2.980f, 4.450f);
-                case "cu": return (1.040f, 2.583f);
-                case "none": return (0, 1);
-                default:
-                    Log.Error($"Unknown conductor material '{lookup}'");
-                    goto case "cu";
-            }
+            return Conductors.Lookup(lookup);
         }
 
         private static (float, float) ExtractRoughness(SceneObject obj, float def) {
